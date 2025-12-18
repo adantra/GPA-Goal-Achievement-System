@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SPACE_TIME_PHASES } from '../types';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, X, Loader2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, X, Loader2, WifiOff } from 'lucide-react';
 import { GoogleGenAI, Modality } from "@google/genai";
 
 interface Props {
@@ -25,7 +25,10 @@ async function decodeAudioData(
     sampleRate: number,
     numChannels: number,
 ): Promise<AudioBuffer> {
-    const dataInt16 = new Int16Array(data.buffer);
+    // Ensure data length is even for Int16Array
+    const alignedData = data.length % 2 !== 0 ? data.subarray(0, data.length - 1) : data;
+    
+    const dataInt16 = new Int16Array(alignedData.buffer);
     const frameCount = dataInt16.length / numChannels;
     const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
 
@@ -43,13 +46,17 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
     const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
     const [timeLeft, setTimeLeft] = useState(SPACE_TIME_PHASES[0].duration);
     const [isMuted, setIsMuted] = useState(false);
+    const [isIntermission, setIsIntermission] = useState(false);
     const [audioCache, setAudioCache] = useState<Record<string, AudioBuffer>>({});
-    const [isLoadingAudio, setIsLoadingAudio] = useState(true);
+    const [audioError, setAudioError] = useState<string | null>(null);
+    const [loadingPhases, setLoadingPhases] = useState<Set<string>>(new Set(SPACE_TIME_PHASES.map(p => p.name)));
     
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
 
     const currentPhase = SPACE_TIME_PHASES[currentPhaseIndex];
+    const isAudioReady = !!audioCache[currentPhase.name];
+    const isPhaseLoading = loadingPhases.has(currentPhase.name);
 
     // Initialize Audio and Pre-load TTS
     useEffect(() => {
@@ -61,7 +68,8 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
 
             if (!process.env.API_KEY) {
                 console.warn("No API Key found for TTS");
-                setIsLoadingAudio(false);
+                setAudioError("API Key missing");
+                setLoadingPhases(new Set());
                 return;
             }
 
@@ -69,7 +77,14 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
 
             // Sequentially load audio to avoid rate limits
             for (const phase of SPACE_TIME_PHASES) {
-                if (audioCache[phase.name]) continue;
+                if (audioCache[phase.name]) {
+                    setLoadingPhases(prev => {
+                        const next = new Set(prev);
+                        next.delete(phase.name);
+                        return next;
+                    });
+                    continue;
+                }
 
                 try {
                     const response = await ai.models.generateContent({
@@ -92,9 +107,15 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
                     }
                 } catch (err) {
                     console.error(`Failed to load TTS for ${phase.name}`, err);
+                    setAudioError("Some audio failed to load");
+                } finally {
+                    setLoadingPhases(prev => {
+                        const next = new Set(prev);
+                        next.delete(phase.name);
+                        return next;
+                    });
                 }
             }
-            setIsLoadingAudio(false);
         };
 
         initAudioAndFetch();
@@ -138,6 +159,8 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
             source.connect(audioContextRef.current.destination);
             // Delay voice slightly to let the bell ring first
             source.start(audioContextRef.current.currentTime + 0.8);
+        } else {
+            console.warn(`Audio buffer for ${phaseName} not found.`);
         }
     };
 
@@ -152,33 +175,39 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
 
     // Timer Logic
     useEffect(() => {
-        if (isPlaying && timeLeft > 0) {
+        if (isPlaying && !isIntermission && timeLeft > 0) {
             timerRef.current = setTimeout(() => {
                 setTimeLeft((prev) => prev - 1);
             }, 1000);
-        } else if (isPlaying && timeLeft === 0) {
-            // Transition Phase
+        } else if (isPlaying && !isIntermission && timeLeft === 0) {
+            // End of phase, start intermission
             if (currentPhaseIndex < SPACE_TIME_PHASES.length - 1) {
-                const nextIndex = currentPhaseIndex + 1;
-                setCurrentPhaseIndex(nextIndex);
-                setTimeLeft(SPACE_TIME_PHASES[nextIndex].duration);
-                playPhaseAudio(SPACE_TIME_PHASES[nextIndex].name);
+                setIsIntermission(true);
             } else {
                 setIsPlaying(false);
                 playDing(); // Just a ding for completion
             }
+        } else if (isPlaying && isIntermission) {
+             // Intermission delay
+             timerRef.current = setTimeout(() => {
+                setIsIntermission(false);
+                const nextIndex = currentPhaseIndex + 1;
+                setCurrentPhaseIndex(nextIndex);
+                setTimeLeft(SPACE_TIME_PHASES[nextIndex].duration);
+                playPhaseAudio(SPACE_TIME_PHASES[nextIndex].name);
+            }, 3000); // 3 second pause
         }
 
         return () => {
             if (timerRef.current) clearTimeout(timerRef.current);
         };
-    }, [isPlaying, timeLeft, currentPhaseIndex]);
+    }, [isPlaying, timeLeft, currentPhaseIndex, isIntermission]);
 
     const handleTogglePlay = () => {
         if (!isPlaying) {
             // If starting from the very beginning of a phase, play audio
             const isStartOfPhase = timeLeft === SPACE_TIME_PHASES[currentPhaseIndex].duration;
-            if (isStartOfPhase) {
+            if (isStartOfPhase && !isIntermission) {
                 playPhaseAudio(SPACE_TIME_PHASES[currentPhaseIndex].name);
             }
             setIsPlaying(true);
@@ -191,6 +220,7 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
         setIsPlaying(false);
         setCurrentPhaseIndex(0);
         setTimeLeft(SPACE_TIME_PHASES[0].duration);
+        setIsIntermission(false);
     };
 
     // Calculate scale based on phase for visual effect
@@ -217,7 +247,7 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ 
                             scale: getScale(currentPhaseIndex), 
-                            opacity: 0.8,
+                            opacity: isIntermission ? 0.3 : 0.8,
                             borderColor: currentPhase.color,
                             backgroundColor: `${currentPhase.color}20` 
                         }}
@@ -253,6 +283,28 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
                     >
                         {currentPhase.description}
                     </motion.p>
+                    
+                    {/* Audio Status Indicator */}
+                    <AnimatePresence>
+                        {isPhaseLoading && (
+                            <motion.div 
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-black/50 rounded-full text-xs text-indigo-300 border border-indigo-500/30"
+                            >
+                                <Loader2 size={12} className="animate-spin" />
+                                Downloading Neural Voice...
+                            </motion.div>
+                        )}
+                        {!isPhaseLoading && !isAudioReady && (
+                             <motion.div 
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-red-900/50 rounded-full text-xs text-red-300 border border-red-500/30"
+                            >
+                                <WifiOff size={12} />
+                                Voice Unavailable
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
 
@@ -284,7 +336,7 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
                         className="p-4 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 transition relative"
                     >
                         {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-                        {isLoadingAudio && (
+                        {loadingPhases.size > 0 && (
                             <div className="absolute -top-1 -right-1">
                                 <span className="relative flex h-3 w-3">
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
@@ -296,7 +348,7 @@ const SpaceTimePlayer: React.FC<Props> = ({ onClose }) => {
                 </div>
 
                 <div className="text-slate-400 font-mono">
-                    {timeLeft}s remaining in phase
+                     {isIntermission ? "Deep breath..." : `${timeLeft}s remaining in phase`}
                 </div>
             </div>
         </div>
