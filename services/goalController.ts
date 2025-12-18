@@ -53,6 +53,42 @@ export const createGoal = async (data: Omit<Goal, 'id' | 'status' | 'milestones'
 };
 
 /**
+ * Updates an existing goal's title or description.
+ */
+export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description'>>): Promise<Goal> => {
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    const goals = readGoals();
+    const index = goals.findIndex(g => g.id === id);
+
+    if (index === -1) {
+        throw new Error("Goal not found");
+    }
+
+    const goal = goals[index];
+    const updatedGoal = {
+        ...goal,
+        ...updates
+    };
+
+    goals[index] = updatedGoal;
+    saveGoals(goals);
+
+    return updatedGoal;
+};
+
+/**
+ * Deletes a goal and its associated data.
+ */
+export const deleteGoal = async (id: string): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const goals = readGoals();
+    const updatedGoals = goals.filter(g => g.id !== id);
+    saveGoals(updatedGoals);
+};
+
+/**
  * Simulates GET /goals
  */
 export const getGoals = async (): Promise<Goal[]> => {
@@ -94,5 +130,21 @@ export const updateMilestoneInGoal = async (goalId: string, milestone: any) => {
 
             saveGoals(goals);
         }
+    }
+}
+
+export const removeMilestoneFromGoal = async (goalId: string, milestoneId: string) => {
+    const goals = readGoals();
+    const goal = goals.find(g => g.id === goalId);
+    if (goal) {
+        goal.milestones = goal.milestones.filter(m => m.id !== milestoneId);
+        
+        // If all remaining milestones are completed (and there are some), it stays completed
+        // If there are no milestones, it's technically active awaiting milestones
+        const allCompleted = goal.milestones.length > 0 && goal.milestones.every(m => m.isCompleted);
+        
+        goal.status = allCompleted ? 'completed' : 'active';
+        
+        saveGoals(goals);
     }
 }

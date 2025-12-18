@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { login, register } from '../services/auth';
 import { importUserData } from '../services/dataManagement';
-import { BrainCircuit, Loader2, ArrowRight, UploadCloud, FileJson } from 'lucide-react';
+import { BrainCircuit, Loader2, ArrowRight, UploadCloud, FileJson, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface Props {
     onLoginSuccess: () => void;
@@ -14,6 +14,7 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,19 +41,31 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setLoading(true);
+        setIsImporting(true);
         setError(null);
         setSuccessMsg(null);
 
         try {
-            const restoredUser = await importUserData(file);
-            setSuccessMsg(`Neural Link restored for subject: ${restoredUser.username}. Please login.`);
-            setUsername(restoredUser.username);
-            setIsRegistering(false); // Switch to login mode
+            console.log("Starting import for:", file.name);
+            const { user: restoredUser, goalCount } = await importUserData(file);
+            console.log("Import successful", restoredUser.username, goalCount);
+            
+            // FORCE SESSION WRITE: Bypass the login() simulation to ensure immediate access
+            // This prevents issues where 'login' reads stale data or fails silently
+            localStorage.setItem('gpa_session', JSON.stringify(restoredUser));
+            
+            setSuccessMsg(`Restored ${goalCount} protocols for ${restoredUser.username}. Accessing...`);
+            
+            // Short delay to let the user see the success message, then force update
+            setTimeout(() => {
+                onLoginSuccess();
+            }, 800);
+            
         } catch (err: any) {
-            setError(err.message);
+            console.error("Import/Login failed:", err);
+            setError("Restore failed: " + err.message);
         } finally {
-            setLoading(false);
+            setIsImporting(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -97,21 +110,23 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
                     </div>
 
                     {error && (
-                        <div className="p-3 bg-red-950/30 border border-red-900/30 text-red-400 text-sm rounded-lg">
-                            {error}
+                        <div className="p-3 bg-red-950/30 border border-red-900/30 text-red-400 text-sm rounded-lg flex items-start gap-2 animate-in fade-in slide-in-from-top-2">
+                            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                            <span>{error}</span>
                         </div>
                     )}
                     
                     {successMsg && (
-                        <div className="p-3 bg-emerald-950/30 border border-emerald-900/30 text-emerald-400 text-sm rounded-lg">
+                        <div className="p-3 bg-emerald-950/30 border border-emerald-900/30 text-emerald-400 text-sm rounded-lg animate-pulse flex items-center gap-2">
+                            <CheckCircle size={16} />
                             {successMsg}
                         </div>
                     )}
 
                     <button
                         type="submit"
-                        disabled={loading}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-2"
+                        disabled={loading || isImporting}
+                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {loading ? <Loader2 className="animate-spin" /> : (
                             <>
@@ -129,6 +144,7 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
                             setError(null);
                             setSuccessMsg(null);
                         }}
+                        disabled={isImporting}
                         className="text-slate-500 hover:text-indigo-400 text-sm transition"
                     >
                         {isRegistering 
@@ -141,16 +157,26 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
                             type="file" 
                             accept=".json" 
                             ref={fileInputRef} 
+                            onClick={(e) => (e.currentTarget.value = '')}
                             onChange={handleFileImport} 
                             className="hidden" 
                         />
                         <button 
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={loading}
-                            className="flex items-center justify-center gap-2 w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition"
+                            disabled={loading || isImporting}
+                            className="flex items-center justify-center gap-2 w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition disabled:opacity-50"
                         >
-                            {loading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
-                            Restore Neural Link (Import JSON)
+                            {isImporting ? (
+                                <>
+                                    <Loader2 size={16} className="animate-spin" />
+                                    Restoring Neural Link...
+                                </>
+                            ) : (
+                                <>
+                                    <UploadCloud size={16} />
+                                    Restore Neural Link (Import JSON)
+                                </>
+                            )}
                         </button>
                         <p className="text-xs text-slate-600 mt-2">
                             Upload a backup file to recover your data from another device.

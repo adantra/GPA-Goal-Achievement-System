@@ -1,5 +1,5 @@
 import { Milestone, RewardType, Action } from '../types';
-import { addMilestoneToGoal, updateMilestoneInGoal, getGoals } from './goalController';
+import { addMilestoneToGoal, updateMilestoneInGoal, getGoals, removeMilestoneFromGoal } from './goalController';
 import { getCurrentUser } from './auth';
 
 // Helper to get all milestones from all goals (since we nested them in goals for storage simplicity)
@@ -36,6 +36,52 @@ export const createMilestone = async (goalId: string, title: string, actions: Om
     await addMilestoneToGoal(goalId, newMilestone);
 
     return newMilestone;
+};
+
+/**
+ * Updates an existing milestone.
+ */
+export const updateMilestone = async (id: string, updates: Partial<Pick<Milestone, 'title' | 'actions'>>): Promise<Milestone> => {
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    const milestones = await getAllMilestones();
+    const milestone = milestones.find(m => m.id === id);
+
+    if (!milestone) {
+        throw new Error("Milestone not found");
+    }
+
+    const updatedMilestone = {
+        ...milestone,
+        ...updates
+    };
+
+    // Validate GO/NO-GO if actions are updated
+    if (updates.actions) {
+         const hasGo = updates.actions.some(a => a.type === 'GO');
+         const hasNoGo = updates.actions.some(a => a.type === 'NO_GO');
+         if (!hasGo || !hasNoGo) {
+            throw new Error("Neuro-Protocol Violation: Must have at least one GO and one NO-GO action.");
+         }
+    }
+
+    // Update storage via Goal controller
+    await updateMilestoneInGoal(milestone.goalId, updatedMilestone);
+
+    return updatedMilestone;
+};
+
+/**
+ * Deletes a milestone.
+ */
+export const deleteMilestone = async (id: string): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const milestones = await getAllMilestones();
+    const milestone = milestones.find(m => m.id === id);
+    
+    if (milestone) {
+        await removeMilestoneFromGoal(milestone.goalId, id);
+    }
 };
 
 /**

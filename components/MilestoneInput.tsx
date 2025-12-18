@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActionType, Action } from '../types';
-import { Plus, X, ShieldAlert, ArrowRightCircle, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, X, ShieldAlert, ArrowRightCircle, Sparkles, Loader2, Check } from 'lucide-react';
 import { createMilestone } from '../services/milestoneController';
 import { GoogleGenAI, Type } from "@google/genai";
 
@@ -9,6 +9,13 @@ interface Props {
     goalTitle: string;
     goalDescription: string;
     onMilestoneCreated: () => void;
+}
+
+interface MilestoneOption {
+    title: string;
+    description: string;
+    go_actions: string[];
+    no_go_actions: string[];
 }
 
 const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, onMilestoneCreated }) => {
@@ -20,6 +27,9 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
     const [loading, setLoading] = useState(false);
     const [aiThinking, setAiThinking] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // AI Options State
+    const [aiOptions, setAiOptions] = useState<MilestoneOption[] | null>(null);
 
     const handleAddGo = () => {
         if (currentGo.trim()) {
@@ -51,6 +61,7 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
 
         setAiThinking(true);
         setError(null);
+        setAiOptions(null);
 
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -60,13 +71,14 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
                 The user has the following goal: "${goalTitle}".
                 Description: "${goalDescription}".
                 
-                Generate a single, concrete, actionable milestone to help achieve this goal. 
-                Crucially, you must strictly follow the "Go/No-Go" protocol:
-                1. Provide a concise Title.
-                2. Provide 2-3 "Go" actions (Specific actions to take).
-                3. Provide 2-3 "No-Go" actions (Specific distractions, habits, or behaviors to avoid).
-                
-                The difficulty should be moderate (Goldilocks zone).
+                Generate 3 distinct, concrete, actionable milestone options to help achieve this goal.
+                Provide variety in strategy, intensity, or focus (e.g., "Steady Start", "Intense Push", "Technique Focus").
+
+                Crucially, strictly follow the "Go/No-Go" protocol for each option:
+                1. Title (Concise).
+                2. Description (Briefly explain the strategy/difficulty).
+                3. 2-3 "Go" actions (Specific actions to take).
+                4. 2-3 "No-Go" actions (Specific distractions, habits, or behaviors to avoid).
             `;
 
             const response = await ai.models.generateContent({
@@ -77,26 +89,36 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
-                            title: { type: Type.STRING },
-                            go_actions: { 
-                                type: Type.ARRAY, 
-                                items: { type: Type.STRING } 
-                            },
-                            no_go_actions: { 
-                                type: Type.ARRAY, 
-                                items: { type: Type.STRING } 
+                            options: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        description: { type: Type.STRING },
+                                        go_actions: { 
+                                            type: Type.ARRAY, 
+                                            items: { type: Type.STRING } 
+                                        },
+                                        no_go_actions: { 
+                                            type: Type.ARRAY, 
+                                            items: { type: Type.STRING } 
+                                        }
+                                    },
+                                    required: ["title", "description", "go_actions", "no_go_actions"]
+                                }
                             }
                         },
-                        required: ["title", "go_actions", "no_go_actions"]
+                        required: ["options"]
                     }
                 }
             });
 
             if (response.text) {
                 const data = JSON.parse(response.text);
-                setTitle(data.title);
-                setGoActions(data.go_actions || []);
-                setNoGoActions(data.no_go_actions || []);
+                if (data.options && Array.isArray(data.options)) {
+                    setAiOptions(data.options);
+                }
             }
 
         } catch (err: any) {
@@ -105,6 +127,13 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
         } finally {
             setAiThinking(false);
         }
+    };
+
+    const selectOption = (option: MilestoneOption) => {
+        setTitle(option.title);
+        setGoActions(option.go_actions || []);
+        setNoGoActions(option.no_go_actions || []);
+        setAiOptions(null);
     };
 
     const isValid = title.trim().length > 0 && goActions.length > 0 && noGoActions.length > 0;
@@ -128,6 +157,7 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
             setTitle('');
             setGoActions([]);
             setNoGoActions([]);
+            setAiOptions(null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -136,9 +166,9 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
     };
 
     return (
-        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-6 relative overflow-hidden">
+        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-6 relative overflow-hidden transition-all">
             {aiThinking && (
-                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-indigo-400">
+                <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-indigo-400">
                     <Loader2 className="animate-spin mb-2" size={32} />
                     <span className="text-sm font-mono animate-pulse">Consulting Neural Network...</span>
                 </div>
@@ -149,12 +179,54 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
                 <button
                     type="button"
                     onClick={handleAIGenerate}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30 text-xs transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30 text-xs transition-colors shadow-sm shadow-indigo-500/10"
                 >
                     <Sparkles size={14} />
-                    Auto-Fill with AI
+                    Get AI Suggestions
                 </button>
             </div>
+
+            {/* AI Options Selection */}
+            {aiOptions && (
+                <div className="mb-6 space-y-3 animate-in fade-in slide-in-from-top-4">
+                    <div className="text-sm text-slate-400 mb-2">Select a strategy protocol:</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {aiOptions.map((opt, idx) => (
+                            <div 
+                                key={idx} 
+                                onClick={() => selectOption(opt)}
+                                className="bg-slate-900/80 border border-slate-700 hover:border-indigo-500/50 hover:bg-slate-900 rounded-xl p-4 cursor-pointer transition-all group flex flex-col h-full"
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-bold text-white text-sm group-hover:text-indigo-300 transition-colors line-clamp-1">{opt.title}</h4>
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-400">
+                                        <Check size={16} />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 mb-3 leading-relaxed flex-grow">{opt.description}</p>
+                                
+                                <div className="space-y-2 mt-auto pt-3 border-t border-slate-800/50">
+                                    <div className="text-[10px]">
+                                        <span className="text-emerald-500/80 font-bold uppercase tracking-wider block mb-1">Actions (Go)</span>
+                                        <ul className="list-disc list-inside text-slate-500 space-y-0.5">
+                                            {opt.go_actions.slice(0, 2).map((a, i) => <li key={i} className="truncate">{a}</li>)}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex justify-center">
+                        <button 
+                            onClick={() => setAiOptions(null)}
+                            className="text-xs text-slate-500 hover:text-white mt-2 underline decoration-slate-700 underline-offset-2"
+                        >
+                            Cancel Suggestions
+                        </button>
+                    </div>
+                    <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent my-4"></div>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
