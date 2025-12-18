@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import { ActionType, Action } from '../types';
-import { Plus, X, ShieldAlert, ArrowRightCircle } from 'lucide-react';
+import { Plus, X, ShieldAlert, ArrowRightCircle, Sparkles, Loader2 } from 'lucide-react';
 import { createMilestone } from '../services/milestoneController';
+import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
     goalId: string;
+    goalTitle: string;
+    goalDescription: string;
     onMilestoneCreated: () => void;
 }
 
-const MilestoneInput: React.FC<Props> = ({ goalId, onMilestoneCreated }) => {
+const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, onMilestoneCreated }) => {
     const [title, setTitle] = useState('');
     const [goActions, setGoActions] = useState<string[]>([]);
     const [noGoActions, setNoGoActions] = useState<string[]>([]);
     const [currentGo, setCurrentGo] = useState('');
     const [currentNoGo, setCurrentNoGo] = useState('');
     const [loading, setLoading] = useState(false);
+    const [aiThinking, setAiThinking] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const handleAddGo = () => {
@@ -36,6 +40,70 @@ const MilestoneInput: React.FC<Props> = ({ goalId, onMilestoneCreated }) => {
             setGoActions(goActions.filter((_, i) => i !== index));
         } else {
             setNoGoActions(noGoActions.filter((_, i) => i !== index));
+        }
+    };
+
+    const handleAIGenerate = async () => {
+        if (!process.env.API_KEY) {
+            setError("Neuro-Link Error: API Key missing.");
+            return;
+        }
+
+        setAiThinking(true);
+        setError(null);
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            
+            const prompt = `
+                You are a neuroscience-based goal achievement coach. 
+                The user has the following goal: "${goalTitle}".
+                Description: "${goalDescription}".
+                
+                Generate a single, concrete, actionable milestone to help achieve this goal. 
+                Crucially, you must strictly follow the "Go/No-Go" protocol:
+                1. Provide a concise Title.
+                2. Provide 2-3 "Go" actions (Specific actions to take).
+                3. Provide 2-3 "No-Go" actions (Specific distractions, habits, or behaviors to avoid).
+                
+                The difficulty should be moderate (Goldilocks zone).
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            go_actions: { 
+                                type: Type.ARRAY, 
+                                items: { type: Type.STRING } 
+                            },
+                            no_go_actions: { 
+                                type: Type.ARRAY, 
+                                items: { type: Type.STRING } 
+                            }
+                        },
+                        required: ["title", "go_actions", "no_go_actions"]
+                    }
+                }
+            });
+
+            if (response.text) {
+                const data = JSON.parse(response.text);
+                setTitle(data.title);
+                setGoActions(data.go_actions || []);
+                setNoGoActions(data.no_go_actions || []);
+            }
+
+        } catch (err: any) {
+            console.error(err);
+            setError("Neural synthesis failed. Verify API configuration.");
+        } finally {
+            setAiThinking(false);
         }
     };
 
@@ -68,8 +136,26 @@ const MilestoneInput: React.FC<Props> = ({ goalId, onMilestoneCreated }) => {
     };
 
     return (
-        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Add Milestone</h3>
+        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-6 relative overflow-hidden">
+            {aiThinking && (
+                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-indigo-400">
+                    <Loader2 className="animate-spin mb-2" size={32} />
+                    <span className="text-sm font-mono animate-pulse">Consulting Neural Network...</span>
+                </div>
+            )}
+
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-white">Add Milestone</h3>
+                <button
+                    type="button"
+                    onClick={handleAIGenerate}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30 text-xs transition-colors"
+                >
+                    <Sparkles size={14} />
+                    Auto-Fill with AI
+                </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                     <label className="block text-sm text-slate-400 mb-1">Milestone Title</label>

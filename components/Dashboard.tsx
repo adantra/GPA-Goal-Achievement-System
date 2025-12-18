@@ -3,9 +3,10 @@ import { Goal, Milestone, RewardType } from '../types';
 import { getGoals } from '../services/goalController';
 import { completeMilestone } from '../services/milestoneController';
 import { getCurrentUser, logout } from '../services/auth';
+import { exportUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 
 interface Props {
@@ -54,6 +55,12 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         onLogout();
     };
 
+    const handleExport = () => {
+        if (currentUser) {
+            exportUserData(currentUser);
+        }
+    };
+
     if (showSpaceTime) {
         return <SpaceTimePlayer onClose={() => setShowSpaceTime(false)} />;
     }
@@ -85,13 +92,23 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                 </h1>
                                 <p className="text-slate-400">Goal Pursuit Accelerator</p>
                             </div>
-                            <button 
-                                onClick={handleLogout}
-                                className="text-slate-500 hover:text-red-400 transition p-2"
-                                title="Disconnect"
-                            >
-                                <LogOut size={20} />
-                            </button>
+                            
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={handleExport}
+                                    className="text-slate-500 hover:text-indigo-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800"
+                                    title="Backup Neural Link (Export Data)"
+                                >
+                                    <DownloadCloud size={20} />
+                                </button>
+                                <button 
+                                    onClick={handleLogout}
+                                    className="text-slate-500 hover:text-red-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800"
+                                    title="Disconnect (Logout)"
+                                >
+                                    <LogOut size={20} />
+                                </button>
+                            </div>
                         </div>
                         
                         {currentUser && (
@@ -126,10 +143,18 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                         <div className="text-slate-500 italic">No active protocols found. Define a new goal to begin.</div>
                     ) : (
                         goals.map(goal => (
-                            <div key={goal.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-indigo-900/50 transition-colors">
+                            <div key={goal.id} className={`bg-slate-900 border ${goal.status === 'completed' ? 'border-emerald-500/50 shadow-emerald-900/20 shadow-lg' : 'border-slate-800'} rounded-2xl p-6 hover:border-indigo-900/50 transition-all`}>
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className="text-xl font-bold text-white">{goal.title}</h3>
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                            {goal.title}
+                                            {goal.status === 'completed' && (
+                                                <span className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                    <CheckCircle size={12} />
+                                                    COMPLETED
+                                                </span>
+                                            )}
+                                        </h3>
                                         <p className="text-slate-400 text-sm mt-1">{goal.description}</p>
                                     </div>
                                     <div className="bg-slate-800 px-3 py-1 rounded-full text-xs font-mono text-indigo-400">
@@ -170,7 +195,12 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                     ))}
                                 </div>
 
-                                <MilestoneInput goalId={goal.id} onMilestoneCreated={loadGoals} />
+                                <MilestoneInput 
+                                    goalId={goal.id} 
+                                    goalTitle={goal.title}
+                                    goalDescription={goal.description}
+                                    onMilestoneCreated={loadGoals} 
+                                />
                             </div>
                         ))
                     )}

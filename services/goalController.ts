@@ -65,6 +65,12 @@ export const addMilestoneToGoal = async (goalId: string, milestone: any) => {
      const goal = goals.find(g => g.id === goalId);
      if (goal) {
          goal.milestones.push(milestone);
+         
+         // If a new incomplete milestone is added, the goal is active again
+         if (!milestone.isCompleted) {
+             goal.status = 'active';
+         }
+         
          saveGoals(goals);
      }
 }
@@ -76,6 +82,16 @@ export const updateMilestoneInGoal = async (goalId: string, milestone: any) => {
         const mIndex = goal.milestones.findIndex(m => m.id === milestone.id);
         if (mIndex !== -1) {
             goal.milestones[mIndex] = milestone;
+
+            // Check if all milestones are completed
+            const allCompleted = goal.milestones.length > 0 && goal.milestones.every(m => m.isCompleted);
+            
+            if (allCompleted) {
+                goal.status = 'completed';
+            } else {
+                goal.status = 'active';
+            }
+
             saveGoals(goals);
         }
     }

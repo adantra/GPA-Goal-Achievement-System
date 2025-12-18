@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { login, register } from '../services/auth';
-import { BrainCircuit, Loader2, ArrowRight } from 'lucide-react';
+import { importUserData } from '../services/dataManagement';
+import { BrainCircuit, Loader2, ArrowRight, UploadCloud, FileJson } from 'lucide-react';
 
 interface Props {
     onLoginSuccess: () => void;
@@ -12,6 +13,9 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,6 +33,27 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
             setError(err.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setLoading(true);
+        setError(null);
+        setSuccessMsg(null);
+
+        try {
+            const restoredUser = await importUserData(file);
+            setSuccessMsg(`Neural Link restored for subject: ${restoredUser.username}. Please login.`);
+            setUsername(restoredUser.username);
+            setIsRegistering(false); // Switch to login mode
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -76,6 +101,12 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
                             {error}
                         </div>
                     )}
+                    
+                    {successMsg && (
+                        <div className="p-3 bg-emerald-950/30 border border-emerald-900/30 text-emerald-400 text-sm rounded-lg">
+                            {successMsg}
+                        </div>
+                    )}
 
                     <button
                         type="submit"
@@ -91,11 +122,12 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
                     </button>
                 </form>
 
-                <div className="mt-6 text-center">
+                <div className="mt-6 text-center space-y-4">
                     <button
                         onClick={() => {
                             setIsRegistering(!isRegistering);
                             setError(null);
+                            setSuccessMsg(null);
                         }}
                         className="text-slate-500 hover:text-indigo-400 text-sm transition"
                     >
@@ -103,6 +135,27 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
                             ? 'Already have an ID? Login here.' 
                             : 'First time? Create a Neural ID.'}
                     </button>
+
+                    <div className="border-t border-slate-800 pt-4 mt-4">
+                        <input 
+                            type="file" 
+                            accept=".json" 
+                            ref={fileInputRef} 
+                            onChange={handleFileImport} 
+                            className="hidden" 
+                        />
+                        <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={loading}
+                            className="flex items-center justify-center gap-2 w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-lg transition"
+                        >
+                            {loading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
+                            Restore Neural Link (Import JSON)
+                        </button>
+                        <p className="text-xs text-slate-600 mt-2">
+                            Upload a backup file to recover your data from another device.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
