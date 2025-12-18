@@ -1,20 +1,34 @@
-import React, { useState } from 'react';
-import { AlertOctagon, Sparkles, Wand2, Loader2, ThumbsUp, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertOctagon, Sparkles, Wand2, Loader2, ThumbsUp, AlertTriangle, Save, X } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
+import { getCurrentUser } from '../services/auth';
 
 interface Props {
     onUnlock: () => void;
+    mode?: 'block' | 'view';
 }
 
-const ForeshadowingFailureModal: React.FC<Props> = ({ onUnlock }) => {
+const ForeshadowingFailureModal: React.FC<Props> = ({ onUnlock, mode = 'block' }) => {
     const [text, setText] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isEnhancing, setIsEnhancing] = useState(false);
     const [feedback, setFeedback] = useState<{ score: number; critique: string; suggestion: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const currentUser = getCurrentUser();
+
+    // Load saved text on mount
+    useEffect(() => {
+        if (currentUser) {
+            const saved = localStorage.getItem(`gpa_data_${currentUser.id}_amygdala`);
+            if (saved) {
+                setText(saved);
+            }
+        }
+    }, [currentUser]);
 
     const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
-    const isEnough = wordCount >= 50;
+    // In view mode, we don't enforce word count strictly for closing, but visual feedback is good
+    const isEnough = wordCount >= 50; 
 
     const getAI = () => {
         if (!process.env.API_KEY) {
@@ -112,34 +126,54 @@ const ForeshadowingFailureModal: React.FC<Props> = ({ onUnlock }) => {
         }
     };
 
+    const handleComplete = () => {
+        if (currentUser) {
+            localStorage.setItem(`gpa_data_${currentUser.id}_amygdala`, text);
+        }
+        onUnlock();
+    };
+
     return (
         <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="max-w-2xl w-full bg-slate-900 border border-red-900/50 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
                 {/* Background Pulse for urgency */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50"></div>
+                
+                {mode === 'view' && (
+                    <button 
+                        onClick={handleComplete} 
+                        className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+                    >
+                        <X size={24} />
+                    </button>
+                )}
 
                 <div className="flex items-center gap-4 mb-6">
                     <div className="p-3 bg-red-900/20 rounded-full text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
                         <AlertOctagon size={32} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-white tracking-tight">Access Blocked: Foreshadowing Failure</h1>
-                        <p className="text-red-400 text-sm font-mono tracking-wide uppercase">Protocol 3: Amygdala Activation Required</p>
+                        <h1 className="text-2xl font-bold text-white tracking-tight">
+                            {mode === 'block' ? 'Access Blocked: Foreshadowing Failure' : 'Amygdala Activation Protocol'}
+                        </h1>
+                        <p className="text-red-400 text-sm font-mono tracking-wide uppercase">
+                            {mode === 'block' ? 'Protocol 3: Amygdala Activation Required' : 'Status: Active Monitoring'}
+                        </p>
                     </div>
                 </div>
 
                 <div className="prose prose-invert mb-6 text-slate-300 text-sm leading-relaxed">
                     <p>
-                        To ensure you remain committed, you must vividly describe the 
-                        <strong className="text-red-400"> negative consequences</strong> of failing to achieve your current goals. 
-                        What will your life look like in 5 years if you stay exactly as you are? 
-                        Who will you disappoint? What pain will you feel?
+                        {mode === 'block' 
+                            ? "To ensure you remain committed, you must vividly describe the negative consequences of failing to achieve your current goals. What will your life look like in 5 years if you stay exactly as you are?"
+                            : "Review your failure scenario. Read this daily to maintain autonomic arousal and prevent complacency. Feel the pain of inaction."
+                        }
                     </p>
                 </div>
 
                 <div className="relative">
                     <textarea
-                        className="w-full h-48 bg-black/50 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-red-500 outline-none transition resize-none leading-relaxed"
+                        className="w-full h-48 bg-black/50 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-red-500 outline-none transition resize-none leading-relaxed font-medium"
                         placeholder="If I fail, I will..."
                         value={text}
                         onChange={(e) => setText(e.target.value)}
@@ -194,19 +228,25 @@ const ForeshadowingFailureModal: React.FC<Props> = ({ onUnlock }) => {
                     </div>
 
                     <button
-                        onClick={onUnlock}
-                        disabled={!isEnough}
+                        onClick={handleComplete}
+                        disabled={mode === 'block' && !isEnough}
                         className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2
-                            ${isEnough 
+                            ${(mode === 'view' || isEnough)
                                 ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/40' 
                                 : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                             }`}
                     >
-                        {isEnough ? (
+                        {(mode === 'view') ? (
                             <>
-                                <ThumbsUp size={18} /> Unlock Dashboard
+                                <Save size={18} /> Save & Close
                             </>
-                        ) : 'Write More to Unlock'}
+                        ) : (
+                            isEnough ? (
+                                <>
+                                    <ThumbsUp size={18} /> Unlock Dashboard
+                                </>
+                            ) : 'Write More to Unlock'
+                        )}
                     </button>
                 </div>
             </div>

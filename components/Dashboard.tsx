@@ -6,8 +6,9 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
+import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -18,6 +19,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [goals, setGoals] = useState<Goal[]>([]);
     const [loading, setLoading] = useState(true);
     const [showSpaceTime, setShowSpaceTime] = useState(false);
+    const [showAmygdala, setShowAmygdala] = useState(false);
     const [rewardMessage, setRewardMessage] = useState<string | null>(null);
     const currentUser = getCurrentUser();
 
@@ -223,6 +225,10 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 </div>
             )}
 
+            {showAmygdala && (
+                <ForeshadowingFailureModal mode="view" onUnlock={() => setShowAmygdala(false)} />
+            )}
+
             <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">
                 
                 {/* Left Column: Create & Stats */}
@@ -281,13 +287,22 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
                     <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                          <h3 className="text-slate-300 font-semibold mb-2">Neuro-Tools</h3>
-                         <button 
-                            onClick={() => setShowSpaceTime(true)}
-                            className="w-full py-3 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 rounded-lg transition flex items-center justify-center gap-2"
-                         >
-                             <Activity size={18} />
-                             Launch Space-Time Bridge
-                         </button>
+                         <div className="space-y-2">
+                             <button 
+                                onClick={() => setShowSpaceTime(true)}
+                                className="w-full py-3 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 rounded-lg transition flex items-center justify-center gap-2"
+                             >
+                                 <Activity size={18} />
+                                 Space-Time Bridge
+                             </button>
+                             <button 
+                                onClick={() => setShowAmygdala(true)}
+                                className="w-full py-3 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-300 rounded-lg transition flex items-center justify-center gap-2"
+                             >
+                                 <Flame size={18} />
+                                 Amygdala Protocol
+                             </button>
+                         </div>
                     </div>
 
                     <CreateGoalForm onGoalCreated={loadGoals} />

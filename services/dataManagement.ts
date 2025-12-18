@@ -6,9 +6,14 @@ export const exportUserData = (user: User) => {
     const goalsData = localStorage.getItem(goalsKey);
     const goals = goalsData ? JSON.parse(goalsData) : [];
 
+    // Export Amygdala Text
+    const amygdalaKey = `gpa_data_${user.id}_amygdala`;
+    const amygdalaText = localStorage.getItem(amygdalaKey) || "";
+
     const backup = {
         user,
         goals,
+        amygdala: amygdalaText,
         timestamp: new Date().toISOString(),
         version: 1
     };
@@ -76,6 +81,11 @@ export const importUserData = async (file: File): Promise<{ user: User; goalCoun
                 const goalsKey = `gpa_data_${data.user.id}_goals`;
                 localStorage.setItem(goalsKey, JSON.stringify(goalsToRestore));
                 
+                // 3. Restore Amygdala Data if present
+                if (data.amygdala) {
+                    localStorage.setItem(`gpa_data_${data.user.id}_amygdala`, data.amygdala);
+                }
+
                 // Verify write
                 const verifiedGoals = localStorage.getItem(goalsKey);
                 if (!verifiedGoals) {
