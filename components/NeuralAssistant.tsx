@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import { X, Send, Bot, User, Loader2, Sparkles, Copy, Check } from 'lucide-react';
 
@@ -30,8 +31,11 @@ const NeuralAssistant: React.FC<Props> = ({ isOpen, onClose, contextData }) => {
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        if (isOpen) {
+             // Small timeout to allow render before scroll
+            setTimeout(scrollToBottom, 100);
+        }
+    }, [messages, isOpen]);
 
     // Initialize Chat Session when opened
     useEffect(() => {
@@ -115,89 +119,97 @@ const NeuralAssistant: React.FC<Props> = ({ isOpen, onClose, contextData }) => {
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-slate-900 border-l border-slate-700 shadow-2xl z-50 transform transition-transform duration-300 flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-slate-700 bg-slate-900 flex justify-between items-center">
-                <div className="flex items-center gap-2 text-indigo-400">
-                    <Bot size={20} />
-                    <h3 className="font-bold text-lg">Neural Assistant</h3>
-                </div>
-                <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
-                    <X size={20} />
-                </button>
-            </div>
+    return createPortal(
+        <div className="fixed inset-0 z-[100] pointer-events-none flex justify-end">
+            {/* Backdrop (optional, enables clicking outside to close if pointer-events-auto added) */}
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] pointer-events-auto" onClick={onClose}></div>
 
-            {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/50">
-                {messages.map((msg, idx) => (
-                    <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {msg.role === 'model' && (
+            {/* Drawer */}
+            <div className="h-full w-full sm:w-96 bg-slate-900 border-l border-slate-700 shadow-2xl transform transition-transform duration-300 flex flex-col pointer-events-auto animate-in slide-in-from-right duration-300">
+                {/* Header */}
+                <div className="p-4 border-b border-slate-700 bg-slate-900 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-2 text-indigo-400">
+                        <Bot size={20} />
+                        <h3 className="font-bold text-lg">Neural Assistant</h3>
+                    </div>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* Chat Area */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/50">
+                    {messages.map((msg, idx) => (
+                        <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            {msg.role === 'model' && (
+                                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 border border-indigo-500/30 mt-1">
+                                    <Sparkles size={14} className="text-indigo-400" />
+                                </div>
+                            )}
+                            
+                            <div className={`relative group max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed shadow-sm ${
+                                msg.role === 'user' 
+                                    ? 'bg-indigo-600 text-white rounded-tr-none' 
+                                    : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
+                            }`}>
+                                <div className="whitespace-pre-wrap font-sans">{msg.text}</div>
+                                
+                                {msg.role === 'model' && (
+                                    <button 
+                                        onClick={() => copyToClipboard(msg.text, idx)}
+                                        className="absolute -bottom-6 left-0 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-slate-500 hover:text-indigo-400 flex items-center gap-1"
+                                    >
+                                        {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
+                                        {copiedIndex === idx ? 'Copied' : 'Copy'}
+                                    </button>
+                                )}
+                            </div>
+
+                            {msg.role === 'user' && (
+                                <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 mt-1">
+                                    <User size={14} className="text-slate-400" />
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                    {isLoading && (
+                         <div className="flex gap-3 justify-start">
                             <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 border border-indigo-500/30">
                                 <Sparkles size={14} className="text-indigo-400" />
                             </div>
-                        )}
-                        
-                        <div className={`relative group max-w-[85%] rounded-2xl p-3 text-sm leading-relaxed ${
-                            msg.role === 'user' 
-                                ? 'bg-indigo-600 text-white rounded-tr-none' 
-                                : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
-                        }`}>
-                            <div className="whitespace-pre-wrap">{msg.text}</div>
-                            
-                            {msg.role === 'model' && (
-                                <button 
-                                    onClick={() => copyToClipboard(msg.text, idx)}
-                                    className="absolute -bottom-6 left-0 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-slate-500 hover:text-indigo-400 flex items-center gap-1"
-                                >
-                                    {copiedIndex === idx ? <Check size={12} /> : <Copy size={12} />}
-                                    {copiedIndex === idx ? 'Copied' : 'Copy'}
-                                </button>
-                            )}
-                        </div>
-
-                        {msg.role === 'user' && (
-                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
-                                <User size={14} className="text-slate-400" />
+                            <div className="bg-slate-800 rounded-2xl p-3 rounded-tl-none border border-slate-700 flex items-center gap-2">
+                                 <Loader2 size={14} className="animate-spin text-indigo-400" />
+                                 <span className="text-xs text-slate-400">Processing...</span>
                             </div>
-                        )}
-                    </div>
-                ))}
-                {isLoading && (
-                     <div className="flex gap-3 justify-start">
-                        <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 border border-indigo-500/30">
-                            <Sparkles size={14} className="text-indigo-400" />
-                        </div>
-                        <div className="bg-slate-800 rounded-2xl p-3 rounded-tl-none border border-slate-700 flex items-center gap-2">
-                             <Loader2 size={14} className="animate-spin text-indigo-400" />
-                             <span className="text-xs text-slate-400">Processing...</span>
-                        </div>
-                     </div>
-                )}
-                <div ref={messagesEndRef} />
-            </div>
+                         </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
 
-            {/* Input Area */}
-            <div className="p-4 border-t border-slate-700 bg-slate-900">
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                        placeholder="Ask for suggestions..."
-                        className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                    />
-                    <button
-                        onClick={handleSend}
-                        disabled={isLoading || !inputValue.trim()}
-                        className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-colors disabled:opacity-50"
-                    >
-                        <Send size={18} />
-                    </button>
+                {/* Input Area */}
+                <div className="p-4 border-t border-slate-700 bg-slate-900 shrink-0">
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                            placeholder="Ask for suggestions..."
+                            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                            autoFocus
+                        />
+                        <button
+                            onClick={handleSend}
+                            disabled={isLoading || !inputValue.trim()}
+                            className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-colors disabled:opacity-50"
+                        >
+                            <Send size={18} />
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

@@ -215,9 +215,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 p-6 md:p-12 relative overflow-hidden">
+        <div className="min-h-screen bg-slate-950 p-4 md:p-8 relative overflow-x-hidden">
             {/* Background Texture */}
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none fixed"></div>
 
             {/* Neural Assistant Drawer */}
             <NeuralAssistant 
@@ -243,244 +243,256 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 <ForeshadowingFailureModal mode="view" onUnlock={() => setShowAmygdala(false)} />
             )}
 
-            <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">
+            {/* Main Layout Grid - Wider and Optimized */}
+            <div className="max-w-[1800px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
                 
-                {/* Left Column: Create & Stats */}
-                <div className="space-y-8">
-                    <header>
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h1 className="text-3xl font-black text-white tracking-tight mb-2 flex items-center gap-3">
-                                    <BrainCircuit className="text-indigo-500" size={32} />
-                                    GPA
-                                </h1>
-                                <p className="text-slate-400">Goal Pursuit Accelerator</p>
+                {/* Left Column: Create & Stats - STICKY */}
+                <div className="lg:col-span-4 xl:col-span-3">
+                    <div className="lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto custom-scrollbar lg:pr-2 space-y-8 pb-8">
+                        <header>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h1 className="text-3xl font-black text-white tracking-tight mb-2 flex items-center gap-3">
+                                        <BrainCircuit className="text-indigo-500" size={32} />
+                                        GPA
+                                    </h1>
+                                    <p className="text-slate-400 text-sm">Goal Pursuit Accelerator</p>
+                                </div>
+                                
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="file" 
+                                        accept=".json" 
+                                        ref={fileInputRef} 
+                                        onClick={(e) => (e.currentTarget.value = '')}
+                                        onChange={handleImport} 
+                                        className="hidden" 
+                                    />
+                                    <button 
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={isImporting}
+                                        className="text-slate-500 hover:text-emerald-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800 disabled:opacity-50"
+                                        title="Restore Neural Link (Import Data)"
+                                    >
+                                        {isImporting ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
+                                    </button>
+                                    <button 
+                                        onClick={handleExport}
+                                        className="text-slate-500 hover:text-indigo-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800"
+                                        title="Backup Neural Link (Export Data)"
+                                    >
+                                        <DownloadCloud size={18} />
+                                    </button>
+                                    <button 
+                                        onClick={handleLogout}
+                                        className="text-slate-500 hover:text-red-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800"
+                                        title="Disconnect (Logout)"
+                                    >
+                                        <LogOut size={18} />
+                                    </button>
+                                </div>
                             </div>
                             
-                            <div className="flex gap-2">
-                                <input 
-                                    type="file" 
-                                    accept=".json" 
-                                    ref={fileInputRef} 
-                                    onClick={(e) => (e.currentTarget.value = '')}
-                                    onChange={handleImport} 
-                                    className="hidden" 
-                                />
-                                <button 
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isImporting}
-                                    className="text-slate-500 hover:text-emerald-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800 disabled:opacity-50"
-                                    title="Restore Neural Link (Import Data)"
-                                >
-                                    {isImporting ? <Loader2 size={20} className="animate-spin" /> : <UploadCloud size={20} />}
-                                </button>
-                                <button 
-                                    onClick={handleExport}
-                                    className="text-slate-500 hover:text-indigo-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800"
-                                    title="Backup Neural Link (Export Data)"
-                                >
-                                    <DownloadCloud size={20} />
-                                </button>
-                                <button 
-                                    onClick={handleLogout}
-                                    className="text-slate-500 hover:text-red-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800"
-                                    title="Disconnect (Logout)"
-                                >
-                                    <LogOut size={20} />
-                                </button>
-                            </div>
+                            {currentUser && (
+                                <div className="mt-4 flex items-center gap-2 text-xs font-mono text-indigo-300 bg-indigo-950/30 p-2 px-3 rounded-full w-fit border border-indigo-900/50">
+                                    <UserIcon size={12} />
+                                    <span>SUBJ: {currentUser.username}</span>
+                                </div>
+                            )}
+                        </header>
+
+                        <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+                             <h3 className="text-slate-300 font-semibold mb-2 text-sm uppercase tracking-wider">Neuro-Tools</h3>
+                             <div className="space-y-2">
+                                 <button 
+                                    onClick={() => setShowSpaceTime(true)}
+                                    className="w-full py-3 bg-purple-900/20 hover:bg-purple-900/40 border border-purple-500/20 text-purple-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium"
+                                 >
+                                     <Activity size={16} />
+                                     Space-Time Bridge
+                                 </button>
+                                 <button 
+                                    onClick={() => setShowAmygdala(true)}
+                                    className="w-full py-3 bg-red-900/20 hover:bg-red-900/40 border border-red-500/20 text-red-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium"
+                                 >
+                                     <Flame size={16} />
+                                     Amygdala Protocol
+                                 </button>
+                             </div>
                         </div>
-                        
-                        {currentUser && (
-                            <div className="mt-4 flex items-center gap-2 text-sm text-indigo-300 bg-indigo-950/30 p-2 px-3 rounded-full w-fit border border-indigo-900/50">
-                                <UserIcon size={14} />
-                                <span>Subject: {currentUser.username}</span>
-                            </div>
-                        )}
-                    </header>
 
-                    <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-                         <h3 className="text-slate-300 font-semibold mb-2">Neuro-Tools</h3>
-                         <div className="space-y-2">
-                             <button 
-                                onClick={() => setShowSpaceTime(true)}
-                                className="w-full py-3 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 rounded-lg transition flex items-center justify-center gap-2"
-                             >
-                                 <Activity size={18} />
-                                 Space-Time Bridge
-                             </button>
-                             <button 
-                                onClick={() => setShowAmygdala(true)}
-                                className="w-full py-3 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 text-red-300 rounded-lg transition flex items-center justify-center gap-2"
-                             >
-                                 <Flame size={18} />
-                                 Amygdala Protocol
-                             </button>
-                         </div>
+                        <CreateGoalForm onGoalCreated={loadGoals} />
                     </div>
-
-                    <CreateGoalForm onGoalCreated={loadGoals} />
                 </div>
 
                 {/* Right Column: Goal List */}
-                <div className="lg:col-span-2 space-y-6">
-                    <h2 className="text-xl font-bold text-white">Active Protocols</h2>
+                <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+                    <div className="flex items-center justify-between mb-2">
+                         <h2 className="text-xl font-bold text-white">Active Protocols</h2>
+                         <div className="text-slate-500 text-sm">{goals.length} {goals.length === 1 ? 'Protocol' : 'Protocols'} Running</div>
+                    </div>
                     
                     {loading ? (
-                        <div className="text-slate-500 animate-pulse">Loading neural pathways...</div>
+                        <div className="text-slate-500 animate-pulse flex items-center gap-2"><Loader2 className="animate-spin" /> Loading neural pathways...</div>
                     ) : goals.length === 0 ? (
-                        <div className="text-slate-500 italic">No active protocols found. Define a new goal to begin.</div>
+                        <div className="text-slate-500 italic p-8 border border-dashed border-slate-800 rounded-2xl text-center">
+                            No active protocols found. Define a new goal in the left panel to begin.
+                        </div>
                     ) : (
-                        goals.map(goal => {
-                            const isCollapsed = collapsedGoals.has(goal.id);
-                            const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
-                            const totalMilestones = goal.milestones.length;
-                            const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+                        // Goals Grid - 2 columns on very wide screens
+                        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 items-start">
+                            {goals.map(goal => {
+                                const isCollapsed = collapsedGoals.has(goal.id);
+                                const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
+                                const totalMilestones = goal.milestones.length;
+                                const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+                                const isEditing = editingGoalId === goal.id;
 
-                            return (
-                                <div key={goal.id} className={`bg-slate-900 border ${goal.status === 'completed' ? 'border-emerald-500/50 shadow-emerald-900/20 shadow-lg' : 'border-slate-800'} rounded-2xl p-6 hover:border-indigo-900/50 transition-all`}>
-                                    <div className="flex justify-between items-start mb-4">
-                                        {editingGoalId === goal.id ? (
-                                            <div className="flex-1 mr-4 space-y-3">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-xs text-indigo-400 font-bold uppercase">Editing Protocol</span>
-                                                    <button 
-                                                        onClick={() => setShowAssistant(!showAssistant)}
-                                                        className="text-xs flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
-                                                    >
-                                                        <Bot size={12} /> Assist
-                                                    </button>
-                                                    <button 
-                                                        onClick={handleAIPolish}
-                                                        disabled={isPolishing}
-                                                        className="ml-auto text-xs flex items-center gap-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
-                                                    >
-                                                        {isPolishing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                                                        AI Polish
-                                                    </button>
+                                return (
+                                    <div key={goal.id} className={`bg-slate-900 border ${goal.status === 'completed' ? 'border-emerald-500/50 shadow-emerald-900/20 shadow-lg' : 'border-slate-800'} rounded-2xl p-6 hover:border-indigo-900/50 transition-all ${isEditing ? '2xl:col-span-2 shadow-2xl shadow-black ring-1 ring-indigo-500/30 z-20 relative' : ''}`}>
+                                        <div className="flex justify-between items-start mb-4">
+                                            {isEditing ? (
+                                                <div className="flex-1 mr-4 space-y-3">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-xs text-indigo-400 font-bold uppercase">Editing Protocol</span>
+                                                        <button 
+                                                            onClick={() => setShowAssistant(!showAssistant)}
+                                                            className="text-xs flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
+                                                        >
+                                                            <Bot size={12} /> Assist
+                                                        </button>
+                                                        <button 
+                                                            onClick={handleAIPolish}
+                                                            disabled={isPolishing}
+                                                            className="ml-auto text-xs flex items-center gap-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
+                                                        >
+                                                            {isPolishing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                                            AI Polish
+                                                        </button>
+                                                    </div>
+                                                    <input 
+                                                        value={editTitle}
+                                                        onChange={e => setEditTitle(e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white font-bold text-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                        placeholder="Goal Title"
+                                                        autoFocus
+                                                    />
+                                                    <textarea 
+                                                        value={editDescription}
+                                                        onChange={e => setEditDescription(e.target.value)}
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24"
+                                                        placeholder="Description"
+                                                    />
+                                                    <div className="flex gap-2 flex-wrap">
+                                                        <button 
+                                                            onClick={() => saveEdit(goal.id)} 
+                                                            disabled={isSaving} 
+                                                            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
+                                                        >
+                                                            <Save size={16} /> Save
+                                                        </button>
+                                                        <button 
+                                                            onClick={cancelEditing} 
+                                                            disabled={isSaving} 
+                                                            className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
+                                                        >
+                                                            <X size={16} /> Cancel
+                                                        </button>
+                                                        <div className="flex-1"></div>
+                                                        <button 
+                                                            onClick={() => handleDeleteGoal(goal.id)} 
+                                                            disabled={isSaving} 
+                                                            className="flex items-center gap-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-red-900/30"
+                                                        >
+                                                            <Trash2 size={16} /> Delete Protocol
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <input 
-                                                    value={editTitle}
-                                                    onChange={e => setEditTitle(e.target.value)}
-                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white font-bold text-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                    placeholder="Goal Title"
-                                                    autoFocus
-                                                />
-                                                <textarea 
-                                                    value={editDescription}
-                                                    onChange={e => setEditDescription(e.target.value)}
-                                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24"
-                                                    placeholder="Description"
-                                                />
-                                                <div className="flex gap-2 flex-wrap">
-                                                    <button 
-                                                        onClick={() => saveEdit(goal.id)} 
-                                                        disabled={isSaving} 
-                                                        className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
-                                                    >
-                                                        <Save size={16} /> Save
-                                                    </button>
-                                                    <button 
-                                                        onClick={cancelEditing} 
-                                                        disabled={isSaving} 
-                                                        className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
-                                                    >
-                                                        <X size={16} /> Cancel
-                                                    </button>
-                                                    <div className="flex-1"></div>
-                                                    <button 
-                                                        onClick={() => handleDeleteGoal(goal.id)} 
-                                                        disabled={isSaving} 
-                                                        className="flex items-center gap-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-red-900/30"
-                                                    >
-                                                        <Trash2 size={16} /> Delete Protocol
-                                                    </button>
+                                            ) : (
+                                                <div className="flex-1 mr-4 group relative">
+                                                    <div className="flex items-center gap-3">
+                                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                                            {goal.title}
+                                                            {goal.status === 'completed' && (
+                                                                <span className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                                                    <CheckCircle size={12} />
+                                                                    COMPLETED
+                                                                </span>
+                                                            )}
+                                                        </h3>
+                                                        <button 
+                                                            onClick={() => startEditing(goal)} 
+                                                            className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-indigo-400 transition-opacity p-1"
+                                                            title="Edit Goal"
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-slate-400 text-sm mt-1 whitespace-pre-wrap">{goal.description}</p>
                                                 </div>
+                                            )}
+
+                                            <div className="flex flex-col items-end gap-3 ml-4">
+                                                <div className="bg-slate-800 px-3 py-1 rounded-full text-xs font-mono text-indigo-400 whitespace-nowrap border border-slate-700">
+                                                    Diff: {goal.difficultyRating}/10
+                                                </div>
+                                                <button 
+                                                    onClick={() => toggleGoal(goal.id)}
+                                                    className="p-1 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                                                    title={isCollapsed ? "Expand Protocol" : "Collapse Protocol"}
+                                                >
+                                                    {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                                                </button>
                                             </div>
-                                        ) : (
-                                            <div className="flex-1 mr-4 group relative">
+                                        </div>
+
+                                        {/* Progress Summary (Visible when collapsed) */}
+                                        {isCollapsed && (
+                                            <div 
+                                                onClick={() => toggleGoal(goal.id)}
+                                                className="mt-2 flex items-center justify-between text-xs text-slate-500 bg-slate-950/30 p-2 rounded-lg border border-slate-800/50 cursor-pointer hover:bg-slate-950/50 transition-colors"
+                                            >
                                                 <div className="flex items-center gap-3">
-                                                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                                        {goal.title}
-                                                        {goal.status === 'completed' && (
-                                                            <span className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                                                <CheckCircle size={12} />
-                                                                COMPLETED
-                                                            </span>
-                                                        )}
-                                                    </h3>
-                                                    <button 
-                                                        onClick={() => startEditing(goal)} 
-                                                        className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-indigo-400 transition-opacity p-1"
-                                                        title="Edit Goal"
-                                                    >
-                                                        <Edit2 size={16} />
-                                                    </button>
+                                                    <span className="font-mono text-indigo-300/70">{completedMilestones}/{totalMilestones} Milestones</span>
+                                                    <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                        <div 
+                                                            className={`h-full ${goal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
+                                                            style={{ width: `${progress}%` }}
+                                                        ></div>
+                                                    </div>
                                                 </div>
-                                                <p className="text-slate-400 text-sm mt-1 whitespace-pre-wrap">{goal.description}</p>
+                                                <span className="text-slate-600 group-hover:text-slate-400 transition-colors">Show details</span>
                                             </div>
                                         )}
 
-                                        <div className="flex flex-col items-end gap-3 ml-4">
-                                            <div className="bg-slate-800 px-3 py-1 rounded-full text-xs font-mono text-indigo-400 whitespace-nowrap border border-slate-700">
-                                                Diff: {goal.difficultyRating}/10
-                                            </div>
-                                            <button 
-                                                onClick={() => toggleGoal(goal.id)}
-                                                className="p-1 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-                                                title={isCollapsed ? "Expand Protocol" : "Collapse Protocol"}
-                                            >
-                                                {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Progress Summary (Visible when collapsed) */}
-                                    {isCollapsed && (
-                                        <div 
-                                            onClick={() => toggleGoal(goal.id)}
-                                            className="mt-2 flex items-center justify-between text-xs text-slate-500 bg-slate-950/30 p-2 rounded-lg border border-slate-800/50 cursor-pointer hover:bg-slate-950/50 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-mono text-indigo-300/70">{completedMilestones}/{totalMilestones} Milestones</span>
-                                                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                    <div 
-                                                        className={`h-full ${goal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
-                                                        style={{ width: `${progress}%` }}
-                                                    ></div>
+                                        {/* Milestones & Input */}
+                                        {!isCollapsed && (
+                                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <div className="space-y-3 mt-6 border-t border-slate-800 pt-6">
+                                                    {goal.milestones.length === 0 && <p className="text-slate-600 text-sm">No milestones defined yet.</p>}
+                                                    
+                                                    {goal.milestones.map(milestone => (
+                                                        <MilestoneItem 
+                                                            key={milestone.id} 
+                                                            milestone={milestone} 
+                                                            onUpdate={loadGoals}
+                                                            onReward={handleReward}
+                                                        />
+                                                    ))}
                                                 </div>
-                                            </div>
-                                            <span className="text-slate-600 group-hover:text-slate-400 transition-colors">Show details</span>
-                                        </div>
-                                    )}
 
-                                    {/* Milestones & Input */}
-                                    {!isCollapsed && (
-                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                            <div className="space-y-3 mt-6 border-t border-slate-800 pt-6">
-                                                {goal.milestones.length === 0 && <p className="text-slate-600 text-sm">No milestones defined yet.</p>}
-                                                
-                                                {goal.milestones.map(milestone => (
-                                                    <MilestoneItem 
-                                                        key={milestone.id} 
-                                                        milestone={milestone} 
-                                                        onUpdate={loadGoals}
-                                                        onReward={handleReward}
-                                                    />
-                                                ))}
+                                                <MilestoneInput 
+                                                    goalId={goal.id} 
+                                                    goalTitle={goal.title}
+                                                    goalDescription={goal.description}
+                                                    onMilestoneCreated={loadGoals} 
+                                                />
                                             </div>
-
-                                            <MilestoneInput 
-                                                goalId={goal.id} 
-                                                goalTitle={goal.title}
-                                                goalDescription={goal.description}
-                                                onMilestoneCreated={loadGoals} 
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     )}
                 </div>
             </div>
