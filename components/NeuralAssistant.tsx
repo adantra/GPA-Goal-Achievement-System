@@ -53,6 +53,8 @@ const NeuralAssistant: React.FC<Props> = ({ isOpen, onClose, contextData }) => {
                 2. Use neuroscience terminology correctly but accessibly (e.g., "autonomic arousal", "friction", "dopamine reward prediction error", "habit stacking").
                 3. If the user asks for ideas, provide concrete, actionable examples.
                 4. If the goal is vague, ask clarifying questions to make it specific.
+                
+                IMPORTANT: Output strictly in PLAIN TEXT. Do not use Markdown formatting (no bold **, italics *, headers #, or bullet points -). Use simple dashes or numbers for lists if necessary, but keep it plain text suitable for a raw text display.
             `;
 
             const chat = ai.chats.create({
