@@ -6,9 +6,10 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
+import NeuralAssistant from './NeuralAssistant';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -33,6 +34,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [editDescription, setEditDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isPolishing, setIsPolishing] = useState(false);
+    const [showAssistant, setShowAssistant] = useState(false);
 
     // Collapsed State
     const [collapsedGoals, setCollapsedGoals] = useState<Set<string>>(new Set());
@@ -126,6 +128,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditTitle('');
         setEditDescription('');
         setIsPolishing(false);
+        setShowAssistant(false);
     };
 
     const handleAIPolish = async () => {
@@ -215,6 +218,17 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         <div className="min-h-screen bg-slate-950 p-6 md:p-12 relative overflow-hidden">
             {/* Background Texture */}
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
+
+            {/* Neural Assistant Drawer */}
+            <NeuralAssistant 
+                isOpen={showAssistant} 
+                onClose={() => setShowAssistant(false)}
+                contextData={{ 
+                    title: editTitle, 
+                    description: editDescription, 
+                    mode: 'edition' 
+                }}
+            />
 
             {/* Reward Toast */}
             {rewardMessage && (
@@ -330,6 +344,12 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                             <div className="flex-1 mr-4 space-y-3">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <span className="text-xs text-indigo-400 font-bold uppercase">Editing Protocol</span>
+                                                    <button 
+                                                        onClick={() => setShowAssistant(!showAssistant)}
+                                                        className="text-xs flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
+                                                    >
+                                                        <Bot size={12} /> Assist
+                                                    </button>
                                                     <button 
                                                         onClick={handleAIPolish}
                                                         disabled={isPolishing}

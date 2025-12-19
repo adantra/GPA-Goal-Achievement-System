@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { createGoal } from '../services/goalController';
-import { Loader2, AlertTriangle, CheckCircle, Sparkles } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
+import NeuralAssistant from './NeuralAssistant';
 
 interface Props {
     onGoalCreated: () => void;
@@ -13,6 +14,7 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated }) => {
     const [difficulty, setDifficulty] = useState(5);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showAssistant, setShowAssistant] = useState(false);
     
     // AI Assessment State
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -124,11 +126,27 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated }) => {
     };
 
     return (
-        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl">
-            <h2 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
-                <span className="bg-indigo-500 w-2 h-6 rounded-full block"></span>
-                Define New Protocol
-            </h2>
+        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl relative">
+            
+            <NeuralAssistant 
+                isOpen={showAssistant} 
+                onClose={() => setShowAssistant(false)}
+                contextData={{ title, description, mode: 'creation' }}
+            />
+
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <span className="bg-indigo-500 w-2 h-6 rounded-full block"></span>
+                    Define New Protocol
+                </h2>
+                <button
+                    onClick={() => setShowAssistant(!showAssistant)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg text-xs font-bold border border-indigo-500/30 transition-colors"
+                >
+                    <Bot size={16} />
+                    Neural Assistant
+                </button>
+            </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
