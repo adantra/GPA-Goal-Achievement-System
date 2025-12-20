@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { createGoal } from '../services/goalController';
-import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot, Target, Zap } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import NeuralAssistant from './NeuralAssistant';
+import GoalScalingWizard from './GoalScalingWizard';
 
 interface Props {
     onGoalCreated: () => void;
@@ -15,6 +16,7 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showAssistant, setShowAssistant] = useState(false);
+    const [showScalingWizard, setShowScalingWizard] = useState(false);
     
     // AI Assessment State
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -134,6 +136,16 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated }) => {
                 contextData={{ title, description, mode: 'creation' }}
             />
 
+            <GoalScalingWizard 
+                isOpen={showScalingWizard}
+                onClose={() => setShowScalingWizard(false)}
+                onComplete={() => {
+                    onGoalCreated();
+                    setTitle('');
+                    setDescription('');
+                }}
+            />
+
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <span className="bg-indigo-500 w-2 h-6 rounded-full block"></span>
@@ -233,13 +245,25 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated }) => {
                     )}
 
                     {!isValid && (
-                        <div className="mt-4 p-3 bg-red-900/20 border border-red-900/50 rounded flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                            <p className="text-sm text-red-300">
-                                <strong>Neuro-Lock Active:</strong> You cannot proceed. 
-                                {isTooEasy ? " This goal is too easy and will not generate sufficient autonomic arousal." : " This goal is too difficult and will trigger amygdala-based avoidance."}
-                                <br/>Adjust slider to 6-8.
-                            </p>
+                        <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2">
+                            <div className="p-3 bg-red-900/20 border border-red-900/50 rounded flex items-start gap-3">
+                                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-sm text-red-300">
+                                    <strong>Neuro-Lock Active:</strong> {isTooEasy ? "This task is too small/boring to recruit enough autonomic arousal." : "This goal is too difficult and will trigger avoidance."}
+                                    <br/>Adjust slider to 6-8 or use the procedure below.
+                                </p>
+                            </div>
+                            
+                            {isTooEasy && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowScalingWizard(true)}
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/40"
+                                >
+                                    <Zap size={18} />
+                                    Scale to Significance Procedure
+                                </button>
+                            )}
                         </div>
                     )}
                     

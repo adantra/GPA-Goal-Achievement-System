@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AlertOctagon, Sparkles, Wand2, Loader2, ThumbsUp, AlertTriangle, Save, X, RefreshCw, Zap } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { getCurrentUser } from '../services/auth';
@@ -16,17 +16,21 @@ const ForeshadowingFailureModal: React.FC<Props> = ({ onUnlock, mode = 'block' }
     const [isGenerating, setIsGenerating] = useState(false);
     const [feedback, setFeedback] = useState<{ score: number; critique: string; suggestion: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
+    
+    // Use useMemo to stabilize currentUser if strictly necessary, but better to depend on ID
+    // We'll just get the user once or depend on the ID.
     const currentUser = getCurrentUser();
+    const userId = currentUser?.id;
 
     // Load saved text on mount
     useEffect(() => {
-        if (currentUser) {
-            const saved = localStorage.getItem(`gpa_data_${currentUser.id}_amygdala`);
+        if (userId) {
+            const saved = localStorage.getItem(`gpa_data_${userId}_amygdala`);
             if (saved) {
                 setText(saved);
             }
         }
-    }, [currentUser]);
+    }, [userId]); // Fixed dependency: use userId string instead of object reference
 
     const wordCount = text.trim().split(/\s+/).filter(w => w.length > 0).length;
     // In view mode, we don't enforce word count strictly for closing, but visual feedback is good
