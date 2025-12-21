@@ -94,14 +94,25 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         try {
             const { user: importedUser } = await importUserData(file);
             
-            // If the backup belongs to the current user, refresh immediately
-            if (currentUser && importedUser.id === currentUser.id) {
-                await loadGoals();
-                setRewardMessage("Neural Link Restored Successfully");
+            // Check if this import matches the current logged-in username (case-insensitive)
+            if (currentUser && importedUser.username.toLowerCase() === currentUser.username.toLowerCase()) {
+                // FORCE SESSION SYNC: 
+                // The import might have updated the ID in the registry (e.g. restoring old data after a reset).
+                // We must update the active session to match the imported user data to ensure we read the correct goals key.
+                localStorage.setItem('gpa_session', JSON.stringify(importedUser));
+                
+                if (importedUser.id !== currentUser.id) {
+                    // If ID changed, full reload is safest to reset all hooks/keys/states
+                    window.location.reload();
+                } else {
+                    // If ID is same, just refresh data
+                    await loadGoals();
+                    setRewardMessage("Neural Link Restored Successfully");
+                }
             } else {
-                // If it's a different user, ask to switch
+                // Different user
                 if (confirm(`Data imported for subject: ${importedUser.username}. Switch to this neural link?`)) {
-                    await login(importedUser.username, importedUser.password);
+                    localStorage.setItem('gpa_session', JSON.stringify(importedUser));
                     window.location.reload();
                 } else {
                     alert(`Import complete. Data stored for ${importedUser.username} but session retained for ${currentUser?.username}.`);

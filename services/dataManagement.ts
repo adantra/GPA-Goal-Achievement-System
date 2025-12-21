@@ -66,11 +66,20 @@ export const importUserData = async (file: File): Promise<{ user: User; goalCoun
                 }
                 
                 // Check if user exists to avoid duplicates
-                const existingUserIndex = users.findIndex(u => u.id === data.user.id);
+                // PRIORITY: Check by ID first, then by Username (Case Insensitive).
+                // If we match by username but not ID, we overwrite the existing user entry
+                // so that the login function retrieves the correct (new) ID associated with the imported data.
+                let existingUserIndex = users.findIndex(u => u.id === data.user.id);
+                
+                if (existingUserIndex === -1) {
+                    existingUserIndex = users.findIndex(u => u.username.toLowerCase() === data.user.username.toLowerCase());
+                }
+
                 if (existingUserIndex === -1) {
                     users.push(data.user);
                 } else {
-                    // Update credentials in case they changed in the backup
+                    // Update credentials/ID to match the backup
+                    // This effectively "swaps" the identity if the ID changed but username is same
                     users[existingUserIndex] = data.user;
                 }
                 

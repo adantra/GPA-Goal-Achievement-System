@@ -20,7 +20,11 @@ export const login = async (username: string, password: string): Promise<User> =
     const usersStr = localStorage.getItem(USERS_KEY);
     const users: User[] = usersStr ? JSON.parse(usersStr) : [];
 
-    const user = users.find(u => u.username === username && u.password === password);
+    // Case-insensitive username match
+    const user = users.find(u => 
+        u.username.toLowerCase() === username.toLowerCase() && 
+        u.password === password
+    );
     
     if (!user) {
         throw new Error("Invalid neural signature (username or password incorrect).");
@@ -36,7 +40,8 @@ export const register = async (username: string, password: string): Promise<User
     const usersStr = localStorage.getItem(USERS_KEY);
     const users: User[] = usersStr ? JSON.parse(usersStr) : [];
 
-    if (users.some(u => u.username === username)) {
+    // Case-insensitive check for existing user
+    if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
         throw new Error("Neural ID already occupied.");
     }
 
