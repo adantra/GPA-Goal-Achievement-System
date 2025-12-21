@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { createGoal } from '../services/goalController';
-import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot, Zap, ArrowRight, Target } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
     onGoalCreated: () => void;
     onOpenAssistant: (title: string, description: string) => void;
+}
+
+interface ExpansionSuggestion {
+    title: string;
+    description: string;
+    reasoning: string;
+    difficulty: number;
 }
 
 const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => {
@@ -18,6 +25,10 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
     // AI Assessment State
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [aiFeedback, setAiFeedback] = useState<{ rating: number; reasoning: string; suggestion: string } | null>(null);
+
+    // Expansion State
+    const [isExpanding, setIsExpanding] = useState(false);
+    const [expansionSuggestions, setExpansionSuggestions] = useState<ExpansionSuggestion[] | null>(null);
 
     // Goldilocks logic helpers
     const isTooEasy = difficulty < 6;
@@ -63,7 +74,7 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                 Provide:
                 1. estimated_rating (integer 1-10)
                 2. reasoning (concise explanation)
-                3. suggestion (if outside 6-8, suggest how to adjust it to be within 6-8. If inside, suggest how to maintain momentum).
+                3. suggestion (if outside 6-8, suggest how to adjust it to be within 6-8).
             `;
 
             const response = await ai.models.generateContent({
@@ -99,6 +110,76 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
         }
     };
 
+    const handleExpandHorizon = async () => {
+        if (!title || !process.env.API_KEY) return;
+
+        setIsExpanding(true);
+        setError(null);
+        setExpansionSuggestions(null);
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const prompt = `
+                The user has proposed a goal that is too simple to sustain dopamine-driven pursuit: "${title}".
+                Current Description: "${description}"
+
+                Suggest 3 more "encompassing" and ambitious versions of this goal that would hit a difficulty of 7 or 8 on a 1-10 scale.
+                These should be meaningful expansions that bridge the user's current intent with a larger pursuit.
+
+                For each suggestion provide:
+                1. title (action-oriented, punchy)
+                2. description (motivating, clear "why")
+                3. reasoning (the neuro-biological benefit of this harder version)
+                4. difficulty (fixed at 7 or 8)
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            suggestions: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        description: { type: Type.STRING },
+                                        reasoning: { type: Type.STRING },
+                                        difficulty: { type: Type.INTEGER }
+                                    },
+                                    required: ["title", "description", "reasoning", "difficulty"]
+                                }
+                            }
+                        },
+                        required: ["suggestions"]
+                    }
+                }
+            });
+
+            if (response.text) {
+                const data = JSON.parse(response.text);
+                setExpansionSuggestions(data.suggestions);
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Neural expansion failed.");
+        } finally {
+            setIsExpanding(false);
+        }
+    };
+
+    const applySuggestion = (s: ExpansionSuggestion) => {
+        setTitle(s.title);
+        setDescription(s.description);
+        setDifficulty(s.difficulty);
+        setExpansionSuggestions(null);
+        setAiFeedback(null);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -117,6 +198,7 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
             setDescription('');
             setDifficulty(5);
             setAiFeedback(null);
+            setExpansionSuggestions(null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -225,13 +307,60 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                     )}
 
                     {!isValid && (
-                        <div className="mt-4 p-3 bg-red-900/20 border border-red-900/50 rounded flex items-start gap-3">
-                            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                            <p className="text-sm text-red-300">
-                                <strong>Neuro-Lock Active:</strong> You cannot proceed. 
-                                {isTooEasy ? " This goal is too easy and will not generate sufficient autonomic arousal." : " This goal is too difficult and will trigger amygdala-based avoidance."}
-                                <br/>Adjust slider to 6-8.
-                            </p>
+                        <div className="mt-4 p-3 bg-red-900/20 border border-red-900/50 rounded space-y-3">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                <p className="text-sm text-red-300">
+                                    {isTooEasy 
+                                        ? <strong>Low Arousal Protocol:</strong> 
+                                        : <strong>High Cortisol Risk:</strong>
+                                    } 
+                                    {isTooEasy ? " This goal is too simple. For long-term neuro-plasticity, we need a higher 'Friction Score'." : " This goal is too complex and may trigger amygdala avoidance."}
+                                </p>
+                            </div>
+
+                            {isTooEasy && (
+                                <button
+                                    type="button"
+                                    onClick={handleExpandHorizon}
+                                    disabled={isExpanding || !title}
+                                    className="w-full py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg text-xs font-bold border border-indigo-500/40 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {isExpanding ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                                    Expand Neural Horizon (Identify Bigger Goal)
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Expansion Suggestions List */}
+                    {expansionSuggestions && (
+                        <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                            <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold flex items-center gap-2">
+                                <Target size={10} /> Optimized Neural Protocols
+                            </div>
+                            {expansionSuggestions.map((s, i) => (
+                                <div 
+                                    key={i} 
+                                    onClick={() => applySuggestion(s)}
+                                    className="p-3 bg-slate-950/50 border border-indigo-500/20 rounded-lg cursor-pointer hover:border-indigo-500/60 hover:bg-slate-950 transition-all group"
+                                >
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h5 className="text-sm font-bold text-indigo-300 group-hover:text-indigo-200 transition-colors">{s.title}</h5>
+                                        <div className="text-[10px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/20">LVL {s.difficulty}</div>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mb-2 line-clamp-2">{s.description}</p>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-500 font-mono">
+                                        <Zap size={10} /> {s.reasoning}
+                                    </div>
+                                </div>
+                            ))}
+                            <button 
+                                onClick={() => setExpansionSuggestions(null)}
+                                className="w-full text-[10px] text-slate-600 hover:text-slate-400 py-1"
+                            >
+                                Dismiss Suggestions
+                            </button>
                         </div>
                     )}
                     
