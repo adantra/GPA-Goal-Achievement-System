@@ -2,19 +2,18 @@ import React, { useState } from 'react';
 import { createGoal } from '../services/goalController';
 import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
-import NeuralAssistant from './NeuralAssistant';
 
 interface Props {
     onGoalCreated: () => void;
+    onOpenAssistant: (title: string, description: string) => void;
 }
 
-const CreateGoalForm: React.FC<Props> = ({ onGoalCreated }) => {
+const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [difficulty, setDifficulty] = useState(5);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showAssistant, setShowAssistant] = useState(false);
     
     // AI Assessment State
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -127,20 +126,14 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated }) => {
 
     return (
         <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl relative">
-            
-            <NeuralAssistant 
-                isOpen={showAssistant} 
-                onClose={() => setShowAssistant(false)}
-                contextData={{ title, description, mode: 'creation' }}
-            />
-
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <span className="bg-indigo-500 w-2 h-6 rounded-full block"></span>
                     Define New Protocol
                 </h2>
                 <button
-                    onClick={() => setShowAssistant(!showAssistant)}
+                    type="button"
+                    onClick={() => onOpenAssistant(title, description)}
                     className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg text-xs font-bold border border-indigo-500/30 transition-colors"
                 >
                     <Bot size={16} />
@@ -207,7 +200,6 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated }) => {
                         <span>10 (Impossible)</span>
                     </div>
 
-                    {/* AI Feedback Display */}
                     {aiFeedback && (
                         <div className="mt-4 p-4 bg-indigo-950/40 border border-indigo-500/20 rounded-lg animate-in fade-in slide-in-from-top-2">
                             <div className="flex justify-between items-start mb-2">

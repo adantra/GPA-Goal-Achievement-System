@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Goal, Milestone, RewardType } from '../types';
 import { getGoals, updateGoal, deleteGoal } from '../services/goalController';
-import { getCurrentUser, logout, login } from '../services/auth';
+import { getCurrentUser, logout } from '../services/auth';
 import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
@@ -34,10 +34,14 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [editDescription, setEditDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isPolishing, setIsPolishing] = useState(false);
+    
+    // Persistent Assistant State
     const [showAssistant, setShowAssistant] = useState(false);
-
-    // Collapsed State
-    const [collapsedGoals, setCollapsedGoals] = useState<Set<string>>(new Set());
+    const [assistantContext, setAssistantContext] = useState<{
+        title: string;
+        description: string;
+        mode: 'creation' | 'edition' | 'idle';
+    }>({ title: '', description: '', mode: 'idle' });
 
     const loadGoals = async () => {
         setLoading(true);
@@ -53,6 +57,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     useEffect(() => {
         loadGoals();
     }, []);
+
+    // Collapsed State
+    const [collapsedGoals, setCollapsedGoals] = useState<Set<string>>(new Set());
 
     const toggleGoal = (id: string) => {
         const newCollapsed = new Set(collapsedGoals);
@@ -94,23 +101,16 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         try {
             const { user: importedUser } = await importUserData(file);
             
-            // Check if this import matches the current logged-in username (case-insensitive)
             if (currentUser && importedUser.username.toLowerCase() === currentUser.username.toLowerCase()) {
-                // FORCE SESSION SYNC: 
-                // The import might have updated the ID in the registry (e.g. restoring old data after a reset).
-                // We must update the active session to match the imported user data to ensure we read the correct goals key.
                 localStorage.setItem('gpa_session', JSON.stringify(importedUser));
                 
                 if (importedUser.id !== currentUser.id) {
-                    // If ID changed, full reload is safest to reset all hooks/keys/states
                     window.location.reload();
                 } else {
-                    // If ID is same, just refresh data
                     await loadGoals();
                     setRewardMessage("Neural Link Restored Successfully");
                 }
             } else {
-                // Different user
                 if (confirm(`Data imported for subject: ${importedUser.username}. Switch to this neural link?`)) {
                     localStorage.setItem('gpa_session', JSON.stringify(importedUser));
                     window.location.reload();
@@ -127,11 +127,21 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         }
     };
 
+    // Assistant Handlers
+    const openAssistant = (title: string, description: string, mode: 'creation' | 'edition') => {
+        setAssistantContext({ title, description, mode });
+        setShowAssistant(true);
+    };
+
     // Edit Handlers
     const startEditing = (goal: Goal) => {
         setEditingGoalId(goal.id);
         setEditTitle(goal.title);
         setEditDescription(goal.description);
+        // Automatically sync assistant context if it's already open
+        if (showAssistant) {
+            setAssistantContext({ title: goal.title, description: goal.description, mode: 'edition' });
+        }
     };
 
     const cancelEditing = () => {
@@ -139,7 +149,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditTitle('');
         setEditDescription('');
         setIsPolishing(false);
-        setShowAssistant(false);
+        setAssistantContext(prev => ({ ...prev, mode: 'idle' }));
     };
 
     const handleAIPolish = async () => {
@@ -182,6 +192,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 const data = JSON.parse(response.text);
                 setEditTitle(data.title || editTitle);
                 setEditDescription(data.description || editDescription);
+                setAssistantContext(prev => ({ ...prev, title: data.title, description: data.description }));
             }
 
         } catch (e) {
@@ -197,7 +208,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setIsSaving(true);
         try {
             await updateGoal(id, { title: editTitle, description: editDescription });
-            await loadGoals(); // Reload to get fresh data
+            await loadGoals();
             cancelEditing();
         } catch (e) {
             console.error("Failed to update goal", e);
@@ -227,23 +238,17 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
     return (
         <div className="min-h-screen bg-slate-950 p-4 md:p-8 relative overflow-x-hidden">
-            {/* Background Texture */}
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none fixed"></div>
 
-            {/* Neural Assistant Drawer */}
+            {/* Persistent Assistant Singleton */}
             <NeuralAssistant 
                 isOpen={showAssistant} 
                 onClose={() => setShowAssistant(false)}
-                contextData={{ 
-                    title: editTitle, 
-                    description: editDescription, 
-                    mode: 'edition' 
-                }}
+                contextData={assistantContext}
             />
 
-            {/* Reward Toast */}
             {rewardMessage && (
-                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+                <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
                     <div className={`px-6 py-4 rounded-xl font-bold shadow-2xl border ${rewardMessage.includes('JACKPOT') ? 'bg-yellow-500 text-black border-yellow-300' : 'bg-indigo-600 text-white border-indigo-400'}`}>
                         {rewardMessage}
                     </div>
@@ -254,10 +259,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 <ForeshadowingFailureModal mode="view" onUnlock={() => setShowAmygdala(false)} />
             )}
 
-            {/* Main Layout Grid - Wider and Optimized */}
-            <div className="max-w-[1800px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+            <div className="max-w-[1800px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10 transition-all duration-500">
                 
-                {/* Left Column: Create & Stats - STICKY */}
                 <div className="lg:col-span-4 xl:col-span-3">
                     <div className="lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto custom-scrollbar lg:pr-2 space-y-8 pb-8">
                         <header>
@@ -271,34 +274,14 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                 </div>
                                 
                                 <div className="flex gap-2">
-                                    <input 
-                                        type="file" 
-                                        accept=".json" 
-                                        ref={fileInputRef} 
-                                        onClick={(e) => (e.currentTarget.value = '')}
-                                        onChange={handleImport} 
-                                        className="hidden" 
-                                    />
-                                    <button 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={isImporting}
-                                        className="text-slate-500 hover:text-emerald-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800 disabled:opacity-50"
-                                        title="Restore Neural Link (Import Data)"
-                                    >
+                                    <input type="file" accept=".json" ref={fileInputRef} onClick={(e) => (e.currentTarget.value = '')} onChange={handleImport} className="hidden" />
+                                    <button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="text-slate-500 hover:text-emerald-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800" title="Restore Neural Link">
                                         {isImporting ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
                                     </button>
-                                    <button 
-                                        onClick={handleExport}
-                                        className="text-slate-500 hover:text-indigo-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800"
-                                        title="Backup Neural Link (Export Data)"
-                                    >
+                                    <button onClick={handleExport} className="text-slate-500 hover:text-indigo-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800" title="Backup Neural Link">
                                         <DownloadCloud size={18} />
                                     </button>
-                                    <button 
-                                        onClick={handleLogout}
-                                        className="text-slate-500 hover:text-red-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800"
-                                        title="Disconnect (Logout)"
-                                    >
+                                    <button onClick={handleLogout} className="text-slate-500 hover:text-red-400 transition p-2 bg-slate-900/50 rounded-lg border border-slate-800" title="Disconnect">
                                         <LogOut size={18} />
                                     </button>
                                 </div>
@@ -315,28 +298,19 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                         <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                              <h3 className="text-slate-300 font-semibold mb-2 text-sm uppercase tracking-wider">Neuro-Tools</h3>
                              <div className="space-y-2">
-                                 <button 
-                                    onClick={() => setShowSpaceTime(true)}
-                                    className="w-full py-3 bg-purple-900/20 hover:bg-purple-900/40 border border-purple-500/20 text-purple-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium"
-                                 >
-                                     <Activity size={16} />
-                                     Space-Time Bridge
+                                 <button onClick={() => setShowSpaceTime(true)} className="w-full py-3 bg-purple-900/20 hover:bg-purple-900/40 border border-purple-500/20 text-purple-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
+                                     <Activity size={16} /> Space-Time Bridge
                                  </button>
-                                 <button 
-                                    onClick={() => setShowAmygdala(true)}
-                                    className="w-full py-3 bg-red-900/20 hover:bg-red-900/40 border border-red-500/20 text-red-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium"
-                                 >
-                                     <Flame size={16} />
-                                     Amygdala Protocol
+                                 <button onClick={() => setShowAmygdala(true)} className="w-full py-3 bg-red-900/20 hover:bg-red-900/40 border border-red-500/20 text-red-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
+                                     <Flame size={16} /> Amygdala Protocol
                                  </button>
                              </div>
                         </div>
 
-                        <CreateGoalForm onGoalCreated={loadGoals} />
+                        <CreateGoalForm onGoalCreated={loadGoals} onOpenAssistant={(t, d) => openAssistant(t, d, 'creation')} />
                     </div>
                 </div>
 
-                {/* Right Column: Goal List */}
                 <div className="lg:col-span-8 xl:col-span-9 space-y-6">
                     <div className="flex items-center justify-between mb-2">
                          <h2 className="text-xl font-bold text-white">Active Protocols</h2>
@@ -350,7 +324,6 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                             No active protocols found. Define a new goal in the left panel to begin.
                         </div>
                     ) : (
-                        // Goals Grid - 2 columns on very wide screens
                         <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 items-start">
                             {goals.map(goal => {
                                 const isCollapsed = collapsedGoals.has(goal.id);
@@ -367,7 +340,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <span className="text-xs text-indigo-400 font-bold uppercase">Editing Protocol</span>
                                                         <button 
-                                                            onClick={() => setShowAssistant(!showAssistant)}
+                                                            onClick={() => openAssistant(editTitle, editDescription, 'edition')}
                                                             className="text-xs flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
                                                         >
                                                             <Bot size={12} /> Assist
@@ -383,38 +356,32 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                     </div>
                                                     <input 
                                                         value={editTitle}
-                                                        onChange={e => setEditTitle(e.target.value)}
+                                                        onChange={e => {
+                                                            setEditTitle(e.target.value);
+                                                            if (showAssistant) setAssistantContext(prev => ({ ...prev, title: e.target.value }));
+                                                        }}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white font-bold text-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                                                         placeholder="Goal Title"
                                                         autoFocus
                                                     />
                                                     <textarea 
                                                         value={editDescription}
-                                                        onChange={e => setEditDescription(e.target.value)}
+                                                        onChange={e => {
+                                                            setEditDescription(e.target.value);
+                                                            if (showAssistant) setAssistantContext(prev => ({ ...prev, description: e.target.value }));
+                                                        }}
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24"
                                                         placeholder="Description"
                                                     />
                                                     <div className="flex gap-2 flex-wrap">
-                                                        <button 
-                                                            onClick={() => saveEdit(goal.id)} 
-                                                            disabled={isSaving} 
-                                                            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
-                                                        >
+                                                        <button onClick={() => saveEdit(goal.id)} disabled={isSaving} className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors">
                                                             <Save size={16} /> Save
                                                         </button>
-                                                        <button 
-                                                            onClick={cancelEditing} 
-                                                            disabled={isSaving} 
-                                                            className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors"
-                                                        >
+                                                        <button onClick={cancelEditing} disabled={isSaving} className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors">
                                                             <X size={16} /> Cancel
                                                         </button>
                                                         <div className="flex-1"></div>
-                                                        <button 
-                                                            onClick={() => handleDeleteGoal(goal.id)} 
-                                                            disabled={isSaving} 
-                                                            className="flex items-center gap-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-red-900/30"
-                                                        >
+                                                        <button onClick={() => handleDeleteGoal(goal.id)} disabled={isSaving} className="flex items-center gap-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-red-900/30">
                                                             <Trash2 size={16} /> Delete Protocol
                                                         </button>
                                                     </div>
@@ -426,16 +393,11 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                             {goal.title}
                                                             {goal.status === 'completed' && (
                                                                 <span className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                                                    <CheckCircle size={12} />
-                                                                    COMPLETED
+                                                                    <CheckCircle size={12} /> COMPLETED
                                                                 </span>
                                                             )}
                                                         </h3>
-                                                        <button 
-                                                            onClick={() => startEditing(goal)} 
-                                                            className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-indigo-400 transition-opacity p-1"
-                                                            title="Edit Goal"
-                                                        >
+                                                        <button onClick={() => startEditing(goal)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-indigo-400 transition-opacity p-1" title="Edit Goal">
                                                             <Edit2 size={16} />
                                                         </button>
                                                     </div>
@@ -447,57 +409,33 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                 <div className="bg-slate-800 px-3 py-1 rounded-full text-xs font-mono text-indigo-400 whitespace-nowrap border border-slate-700">
                                                     Diff: {goal.difficultyRating}/10
                                                 </div>
-                                                <button 
-                                                    onClick={() => toggleGoal(goal.id)}
-                                                    className="p-1 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-                                                    title={isCollapsed ? "Expand Protocol" : "Collapse Protocol"}
-                                                >
+                                                <button onClick={() => toggleGoal(goal.id)} className="p-1 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
                                                     {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
                                                 </button>
                                             </div>
                                         </div>
 
-                                        {/* Progress Summary (Visible when collapsed) */}
                                         {isCollapsed && (
-                                            <div 
-                                                onClick={() => toggleGoal(goal.id)}
-                                                className="mt-2 flex items-center justify-between text-xs text-slate-500 bg-slate-950/30 p-2 rounded-lg border border-slate-800/50 cursor-pointer hover:bg-slate-950/50 transition-colors"
-                                            >
+                                            <div onClick={() => toggleGoal(goal.id)} className="mt-2 flex items-center justify-between text-xs text-slate-500 bg-slate-950/30 p-2 rounded-lg border border-slate-800/50 cursor-pointer hover:bg-slate-950/50 transition-colors">
                                                 <div className="flex items-center gap-3">
                                                     <span className="font-mono text-indigo-300/70">{completedMilestones}/{totalMilestones} Milestones</span>
                                                     <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className={`h-full ${goal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
-                                                            style={{ width: `${progress}%` }}
-                                                        ></div>
+                                                        <div className={`h-full ${goal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }}></div>
                                                     </div>
                                                 </div>
                                                 <span className="text-slate-600 group-hover:text-slate-400 transition-colors">Show details</span>
                                             </div>
                                         )}
 
-                                        {/* Milestones & Input */}
                                         {!isCollapsed && (
                                             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                                                 <div className="space-y-3 mt-6 border-t border-slate-800 pt-6">
                                                     {goal.milestones.length === 0 && <p className="text-slate-600 text-sm">No milestones defined yet.</p>}
-                                                    
                                                     {goal.milestones.map(milestone => (
-                                                        <MilestoneItem 
-                                                            key={milestone.id} 
-                                                            milestone={milestone} 
-                                                            onUpdate={loadGoals}
-                                                            onReward={handleReward}
-                                                        />
+                                                        <MilestoneItem key={milestone.id} milestone={milestone} onUpdate={loadGoals} onReward={handleReward} />
                                                     ))}
                                                 </div>
-
-                                                <MilestoneInput 
-                                                    goalId={goal.id} 
-                                                    goalTitle={goal.title}
-                                                    goalDescription={goal.description}
-                                                    onMilestoneCreated={loadGoals} 
-                                                />
+                                                <MilestoneInput goalId={goal.id} goalTitle={goal.title} goalDescription={goal.description} onMilestoneCreated={loadGoals} />
                                             </div>
                                         )}
                                     </div>
