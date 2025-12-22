@@ -6,11 +6,12 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
 import ScheduleGenerator from './ScheduleGenerator';
+import GoalAuditModal from './GoalAuditModal';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -23,6 +24,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [showSpaceTime, setShowSpaceTime] = useState(false);
     const [showAmygdala, setShowAmygdala] = useState(false);
     const [showSchedule, setShowSchedule] = useState(false);
+    const [showAudit, setShowAudit] = useState(false);
     const [rewardMessage, setRewardMessage] = useState<string | null>(null);
     const currentUser = getCurrentUser();
 
@@ -176,7 +178,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
             `;
 
             const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-flash-lite-latest',
                 contents: prompt,
                 config: {
                     responseMimeType: "application/json",
@@ -253,6 +255,10 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 <ScheduleGenerator goals={goals} onClose={() => setShowSchedule(false)} />
             )}
 
+            {showAudit && (
+                <GoalAuditModal goals={goals} onClose={() => setShowAudit(false)} />
+            )}
+
             {rewardMessage && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
                     <div className={`px-6 py-4 rounded-xl font-bold shadow-2xl border ${rewardMessage.includes('JACKPOT') ? 'bg-yellow-500 text-black border-yellow-300' : 'bg-indigo-600 text-white border-indigo-400'}`}>
@@ -304,6 +310,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                         <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                              <h3 className="text-slate-300 font-semibold mb-2 text-sm uppercase tracking-wider">Neuro-Tools</h3>
                              <div className="space-y-2">
+                                 <button onClick={() => setShowAudit(true)} className="w-full py-3 bg-indigo-900/20 hover:bg-indigo-900/40 border border-indigo-500/20 text-indigo-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
+                                     <PieChart size={16} /> Neuro-Balance Audit
+                                 </button>
                                  <button onClick={() => setShowSpaceTime(true)} className="w-full py-3 bg-purple-900/20 hover:bg-purple-900/40 border border-purple-500/20 text-purple-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
                                      <Activity size={16} /> Space-Time Bridge
                                  </button>
@@ -346,22 +355,40 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                         <div className="flex justify-between items-start mb-4">
                                             {isEditing ? (
                                                 <div className="flex-1 mr-4 space-y-3">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <span className="text-xs text-indigo-400 font-bold uppercase">Editing Protocol</span>
-                                                        <button 
-                                                            onClick={() => openAssistant(editTitle, editDescription, 'edition')}
-                                                            className="text-xs flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
-                                                        >
-                                                            <Bot size={12} /> Assist
-                                                        </button>
-                                                        <button 
-                                                            onClick={handleAIPolish}
-                                                            disabled={isPolishing}
-                                                            className="ml-auto text-xs flex items-center gap-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
-                                                        >
-                                                            {isPolishing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                                                            AI Polish
-                                                        </button>
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-indigo-400 font-bold uppercase">Editing Protocol</span>
+                                                            <button 
+                                                                onClick={() => openAssistant(editTitle, editDescription, 'edition')}
+                                                                className="text-xs flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 transition-colors"
+                                                            >
+                                                                <Bot size={12} /> Assist
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        <div className="relative group">
+                                                            <button 
+                                                                onClick={handleAIPolish}
+                                                                disabled={isPolishing}
+                                                                className="text-xs flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-3 py-1.5 rounded-md shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 border border-white/10"
+                                                            >
+                                                                {isPolishing ? (
+                                                                    <>
+                                                                        <Loader2 size={12} className="animate-spin" />
+                                                                        Optimizing...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Sparkles size={12} />
+                                                                        AI Polish
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                            <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-black/90 text-xs text-slate-300 rounded-lg border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 text-center shadow-xl">
+                                                                Optimizes title & description for maximum neuro-motivation using Gemini.
+                                                                <div className="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-black/90"></div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     <input 
                                                         value={editTitle}
@@ -382,16 +409,16 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                         className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24"
                                                         placeholder="Description"
                                                     />
-                                                    <div className="flex gap-2 flex-wrap">
-                                                        <button onClick={() => saveEdit(goal.id)} disabled={isSaving} className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors">
-                                                            <Save size={16} /> Save
+                                                    <div className="flex gap-2 flex-wrap pt-2">
+                                                        <button onClick={() => saveEdit(goal.id)} disabled={isSaving} className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors shadow-lg shadow-green-900/20">
+                                                            <Save size={16} /> Save Changes
                                                         </button>
-                                                        <button onClick={cancelEditing} disabled={isSaving} className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-colors">
-                                                            <X size={16} /> Cancel
+                                                        <button onClick={cancelEditing} disabled={isSaving} className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-colors">
+                                                            <X size={16} /> Discard
                                                         </button>
                                                         <div className="flex-1"></div>
-                                                        <button onClick={() => handleDeleteGoal(goal.id)} disabled={isSaving} className="flex items-center gap-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-500 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-red-900/30">
-                                                            <Trash2 size={16} /> Delete Protocol
+                                                        <button onClick={() => handleDeleteGoal(goal.id)} disabled={isSaving} className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-2 rounded-lg text-xs font-bold transition-colors border border-red-500/20">
+                                                            <Trash2 size={14} /> Delete
                                                         </button>
                                                     </div>
                                                 </div>
