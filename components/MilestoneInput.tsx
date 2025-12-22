@@ -19,6 +19,7 @@ interface MilestoneOption {
 }
 
 const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, onMilestoneCreated }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
     const [title, setTitle] = useState('');
     const [goActions, setGoActions] = useState<string[]>([]);
     const [noGoActions, setNoGoActions] = useState<string[]>([]);
@@ -51,6 +52,17 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
         } else {
             setNoGoActions(noGoActions.filter((_, i) => i !== index));
         }
+    };
+
+    const handleCancel = () => {
+        setIsExpanded(false);
+        setTitle('');
+        setGoActions([]);
+        setNoGoActions([]);
+        setCurrentGo('');
+        setCurrentNoGo('');
+        setAiOptions(null);
+        setError(null);
     };
 
     const handleAIGenerate = async () => {
@@ -153,20 +165,30 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
         try {
             await createMilestone(goalId, title, actions);
             onMilestoneCreated();
-            // Reset form
-            setTitle('');
-            setGoActions([]);
-            setNoGoActions([]);
-            setAiOptions(null);
+            // Reset form and collapse
+            handleCancel();
         } catch (err: any) {
             setError(err.message);
-        } finally {
             setLoading(false);
         }
     };
 
+    if (!isExpanded) {
+        return (
+            <button 
+                onClick={() => setIsExpanded(true)}
+                className="w-full mt-4 py-3 border-2 border-dashed border-slate-800 rounded-xl text-slate-500 hover:text-indigo-400 hover:border-indigo-500/30 hover:bg-slate-900/50 transition-all flex items-center justify-center gap-2 font-medium text-sm group"
+            >
+                <div className="p-1 rounded-full bg-slate-800 group-hover:bg-indigo-500/20 transition-colors">
+                    <Plus size={16} />
+                </div>
+                Define New Milestone Protocol
+            </button>
+        );
+    }
+
     return (
-        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-6 relative overflow-hidden transition-all">
+        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-6 relative overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-200">
             {aiThinking && (
                 <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-indigo-400">
                     <Loader2 className="animate-spin mb-2" size={32} />
@@ -174,7 +196,11 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
                 </div>
             )}
 
-            <div className="flex justify-between items-center mb-4">
+            <button onClick={handleCancel} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors z-10">
+                <X size={20} />
+            </button>
+
+            <div className="flex justify-between items-center mb-4 pr-8">
                 <h3 className="text-lg font-semibold text-white">Add Milestone</h3>
                 <button
                     type="button"
@@ -236,6 +262,7 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
                         onChange={e => setTitle(e.target.value)}
                         placeholder="e.g., Week 1 Training Log"
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-indigo-500"
+                        autoFocus
                     />
                 </div>
 
@@ -271,6 +298,7 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
                                     </button>
                                 </li>
                             ))}
+                            {goActions.length === 0 && <li className="text-xs text-slate-500 italic">Add at least one action...</li>}
                         </ul>
                     </div>
 
@@ -305,23 +333,34 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
                                     </button>
                                 </li>
                             ))}
+                            {noGoActions.length === 0 && <li className="text-xs text-slate-500 italic">Add at least one avoidance...</li>}
                         </ul>
                     </div>
                 </div>
 
                 {error && <p className="text-red-400 text-sm">{error}</p>}
 
-                <button
-                    type="submit"
-                    disabled={!isValid || loading}
-                    className={`w-full py-2 rounded-lg font-semibold transition-colors ${
-                        isValid 
-                        ? 'bg-slate-700 hover:bg-slate-600 text-white' 
-                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    }`}
-                >
-                    {loading ? 'Adding...' : 'Add Milestone'}
-                </button>
+                <div className="flex gap-3 pt-2">
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="px-4 py-2 rounded-lg font-semibold bg-slate-900 text-slate-400 hover:text-white transition-colors text-sm border border-slate-700"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={!isValid || loading}
+                        className={`flex-1 py-2 rounded-lg font-semibold transition-all shadow-lg flex items-center justify-center gap-2 ${
+                            isValid 
+                            ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20' 
+                            : 'bg-slate-700 text-slate-500 cursor-not-allowed shadow-none'
+                        }`}
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />}
+                        {loading ? 'Adding...' : 'Add Milestone Protocol'}
+                    </button>
+                </div>
             </form>
         </div>
     );

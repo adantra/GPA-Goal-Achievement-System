@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { login, register } from '../services/auth';
+import { login, register, loginAsDemo } from '../services/auth';
 import { importUserData } from '../services/dataManagement';
-import { BrainCircuit, Loader2, ArrowRight, UploadCloud, FileJson, AlertTriangle, CheckCircle } from 'lucide-react';
+import { BrainCircuit, Loader2, ArrowRight, UploadCloud, FileJson, AlertTriangle, CheckCircle, TestTube } from 'lucide-react';
 
 interface Props {
     onLoginSuccess: () => void;
@@ -32,6 +32,19 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
             onLoginSuccess();
         } catch (err: any) {
             setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDemoLogin = async () => {
+        setError(null);
+        setLoading(true);
+        try {
+            await loginAsDemo();
+            onLoginSuccess();
+        } catch (err: any) {
+            setError("Demo initialization failed: " + err.message);
         } finally {
             setLoading(false);
         }
@@ -123,18 +136,32 @@ const LoginForm: React.FC<Props> = ({ onLoginSuccess }) => {
                         </div>
                     )}
 
-                    <button
-                        type="submit"
-                        disabled={loading || isImporting}
-                        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                        {loading ? <Loader2 className="animate-spin" /> : (
-                            <>
-                                {isRegistering ? 'Initialize Neural Link' : 'Access Dashboard'}
-                                <ArrowRight size={18} />
-                            </>
+                    <div className="space-y-3">
+                        <button
+                            type="submit"
+                            disabled={loading || isImporting}
+                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-lg shadow-indigo-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {loading ? <Loader2 className="animate-spin" /> : (
+                                <>
+                                    {isRegistering ? 'Initialize Neural Link' : 'Access Dashboard'}
+                                    <ArrowRight size={18} />
+                                </>
+                            )}
+                        </button>
+                        
+                        {!isRegistering && (
+                            <button
+                                type="button"
+                                onClick={handleDemoLogin}
+                                disabled={loading || isImporting}
+                                className="w-full py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/30 font-bold rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                <TestTube size={18} />
+                                Initialize Demo Protocol
+                            </button>
                         )}
-                    </button>
+                    </div>
                 </form>
 
                 <div className="mt-6 text-center space-y-4">

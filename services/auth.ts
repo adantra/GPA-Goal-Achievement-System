@@ -1,3 +1,5 @@
+import { Goal, DifficultyRating, RewardType, ActionType, Milestone } from '../types';
+
 export interface User {
     id: string;
     username: string;
@@ -56,6 +58,201 @@ export const register = async (username: string, password: string): Promise<User
     localStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
 
     return newUser;
+};
+
+export const loginAsDemo = async (): Promise<User> => {
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    const demoUser: User = {
+        id: 'demo-neural-architect',
+        username: 'Neural_Architect_Demo',
+        password: 'demo'
+    };
+
+    // Construct Demo Data with comprehensive life aspects
+    const demoGoals: Goal[] = [
+        // 1. PHYSICAL
+        {
+            id: 'demo-goal-1',
+            title: 'Somatic Architecture: Hypertrophy Phase 1',
+            description: 'Systematic reconstruction of muscle tissue through progressive overload. Goal is to increase lean mass by 2kg while maintaining mobility.',
+            difficultyRating: 7,
+            status: 'active',
+            milestones: [
+                {
+                    id: 'm1-1',
+                    goalId: 'demo-goal-1',
+                    title: 'Week 1: Neuromuscular Wake-up',
+                    isCompleted: true,
+                    rewardReceived: RewardType.STANDARD,
+                    actions: [
+                        { id: 'a1-1', description: 'Train 4 days per week (Upper/Lower split)', type: ActionType.GO },
+                        { id: 'a1-2', description: 'No missed protein targets (180g daily)', type: ActionType.NO_GO }
+                    ]
+                },
+                {
+                    id: 'm1-2',
+                    goalId: 'demo-goal-1',
+                    title: 'Week 2: Volume Accumulation',
+                    isCompleted: true,
+                    rewardReceived: RewardType.NONE, // RPE didn't hit
+                    actions: [
+                        { id: 'a1-3', description: 'Increase reps by 1-2 on compound lifts', type: ActionType.GO },
+                        { id: 'a1-4', description: 'Do not scroll phone during rest periods', type: ActionType.NO_GO }
+                    ]
+                },
+                {
+                    id: 'm1-3',
+                    goalId: 'demo-goal-1',
+                    title: 'Week 3: Intensity Peak',
+                    isCompleted: false,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a1-5', description: 'Hit failure on final set of isolation exercises', type: ActionType.GO },
+                        { id: 'a1-6', description: 'Avoid alcohol completely to maximize recovery', type: ActionType.NO_GO }
+                    ]
+                }
+            ]
+        },
+        // 2. COGNITIVE / CAREER
+        {
+            id: 'demo-goal-2',
+            title: 'Deep Work: Cognitive Optimization',
+            description: 'Retraining the dopamine baseline to sustain 4 hours of high-focus output daily. Eliminating "snacking" on low-value information.',
+            difficultyRating: 8,
+            status: 'active',
+            milestones: [
+                {
+                    id: 'm2-1',
+                    goalId: 'demo-goal-2',
+                    title: 'The Digital Detox Weekend',
+                    isCompleted: true,
+                    rewardReceived: RewardType.JACKPOT,
+                    actions: [
+                        { id: 'a2-1', description: '24 hours without screens (Saturday)', type: ActionType.GO },
+                        { id: 'a2-2', description: 'No checking email before noon', type: ActionType.NO_GO }
+                    ]
+                },
+                {
+                    id: 'm2-2',
+                    goalId: 'demo-goal-2',
+                    title: 'Protocol: Monk Mode Mornings',
+                    isCompleted: false,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a2-3', description: 'Write 1000 words before breakfast', type: ActionType.GO },
+                        { id: 'a2-4', description: 'Phone must remain in another room until 10 AM', type: ActionType.NO_GO }
+                    ]
+                },
+                {
+                    id: 'm2-3',
+                    goalId: 'demo-goal-2',
+                    title: 'Systematization of Input',
+                    isCompleted: false,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a2-5', description: 'Read 30 pages of a density-rich book daily', type: ActionType.GO },
+                        { id: 'a2-6', description: 'No news websites or algorithmic feeds', type: ActionType.NO_GO }
+                    ]
+                }
+            ]
+        },
+        // 3. RESTORATIVE / BIOLOGICAL
+        {
+            id: 'demo-goal-3',
+            title: 'Circadian Rhythm Synchronization',
+            description: 'Optimizing sleep architecture to regulate cortisol and melatonin. Sleep is the foundation of neuroplasticity.',
+            difficultyRating: 6,
+            status: 'active',
+            milestones: [
+                {
+                    id: 'm3-1',
+                    goalId: 'demo-goal-3',
+                    title: 'Phase 1: Solar Calibration',
+                    isCompleted: true,
+                    rewardReceived: RewardType.STANDARD,
+                    actions: [
+                        { id: 'a3-1', description: 'View 10m of direct sunlight within 30m of waking', type: ActionType.GO },
+                        { id: 'a3-2', description: 'No sunglasses during morning walk', type: ActionType.NO_GO }
+                    ]
+                },
+                {
+                    id: 'm3-2',
+                    goalId: 'demo-goal-3',
+                    title: 'Phase 2: The Sunset Rule',
+                    isCompleted: false,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a3-3', description: 'Wear blue-light blocking glasses after 8 PM', type: ActionType.GO },
+                        { id: 'a3-4', description: 'No overhead lights on after sunset', type: ActionType.NO_GO }
+                    ]
+                },
+                {
+                    id: 'm3-3',
+                    goalId: 'demo-goal-3',
+                    title: 'Phase 3: Thermal Regulation',
+                    isCompleted: false,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a3-5', description: 'Sleep in a room at 18°C (65°F)', type: ActionType.GO },
+                        { id: 'a3-6', description: 'No eating within 3 hours of bedtime', type: ActionType.NO_GO }
+                    ]
+                }
+            ]
+        },
+        // 4. LEARNING / SKILL
+        {
+            id: 'demo-goal-4',
+            title: 'Neural Linguistic Programming: Spanish',
+            description: 'Acquisition of a second language to enhance cognitive flexibility and executive function. Focusing on high-frequency vocabulary.',
+            difficultyRating: 7,
+            status: 'active',
+            milestones: [
+                {
+                    id: 'm4-1',
+                    goalId: 'demo-goal-4',
+                    title: 'Vocab Upload: The First 500',
+                    isCompleted: true,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a4-1', description: 'Review Anki deck for 20 mins daily', type: ActionType.GO },
+                        { id: 'a4-2', description: 'No skipping days (maintain streak)', type: ActionType.NO_GO }
+                    ]
+                },
+                {
+                    id: 'm4-2',
+                    goalId: 'demo-goal-4',
+                    title: 'Auditory Immersion',
+                    isCompleted: false,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a4-3', description: 'Listen to "News in Slow Spanish" during commute', type: ActionType.GO },
+                        { id: 'a4-4', description: 'No English subtitles when watching Spanish media', type: ActionType.NO_GO }
+                    ]
+                },
+                {
+                    id: 'm4-3',
+                    goalId: 'demo-goal-4',
+                    title: 'Output Generation',
+                    isCompleted: false,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a4-5', description: 'Have a 15 min conversation with a native speaker (iTalki)', type: ActionType.GO },
+                        { id: 'a4-6', description: 'Do not revert to English when stuck', type: ActionType.NO_GO }
+                    ]
+                }
+            ]
+        }
+    ];
+
+    // Inject Demo Data
+    localStorage.setItem(SESSION_KEY, JSON.stringify(demoUser));
+    localStorage.setItem(`gpa_data_${demoUser.id}_goals`, JSON.stringify(demoGoals));
+    
+    // Add a demo amygdala text
+    localStorage.setItem(`gpa_data_${demoUser.id}_amygdala`, "If I continue to drift, I will wake up in five years to a stranger in the mirror—softer, slower, and filled with the quiet desperation of unfulfilled potential. The comfort I seek now is the architect of my future misery.");
+
+    return demoUser;
 };
 
 export const logout = () => {
