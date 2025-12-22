@@ -6,7 +6,7 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2 } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
@@ -39,6 +39,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [isPolishing, setIsPolishing] = useState(false);
     
+    // View State
+    const [isGridView, setIsGridView] = useState(false);
+
     // Persistent Assistant State
     const [showAssistant, setShowAssistant] = useState(false);
     const [assistantContext, setAssistantContext] = useState<{
@@ -73,6 +76,27 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
             newCollapsed.add(id);
         }
         setCollapsedGoals(newCollapsed);
+    };
+
+    const toggleGridView = () => {
+        const nextState = !isGridView;
+        setIsGridView(nextState);
+        
+        if (nextState) {
+            // Switching TO Grid View: Collapse All
+            setCollapsedGoals(new Set(goals.map(g => g.id)));
+        } else {
+            // Switching TO List View: Expand All for contrast
+            setCollapsedGoals(new Set());
+        }
+    };
+    
+    const collapseAll = () => {
+        setCollapsedGoals(new Set(goals.map(g => g.id)));
+    };
+
+    const expandAll = () => {
+        setCollapsedGoals(new Set());
     };
 
     const handleReward = (message: string) => {
@@ -331,8 +355,45 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
                 <div className="lg:col-span-8 xl:col-span-9 space-y-6">
                     <div className="flex items-center justify-between mb-2">
-                         <h2 className="text-xl font-bold text-white">Active Protocols</h2>
-                         <div className="text-slate-500 text-sm">{goals.length} {goals.length === 1 ? 'Protocol' : 'Protocols'} Running</div>
+                         <div className="flex items-center gap-4">
+                             <h2 className="text-xl font-bold text-white">Active Protocols</h2>
+                             <div className="text-slate-500 text-sm border-l border-slate-800 pl-4">{goals.length} {goals.length === 1 ? 'Protocol' : 'Protocols'} Running</div>
+                         </div>
+                         
+                         <div className="flex items-center gap-2">
+                             {/* Batch Actions */}
+                             <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+                                 <button 
+                                     onClick={expandAll}
+                                     className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-md transition"
+                                     title="Expand All Details"
+                                 >
+                                     <Maximize2 size={14} />
+                                 </button>
+                                 <button 
+                                     onClick={collapseAll}
+                                     className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-md transition"
+                                     title="Collapse All (Summary)"
+                                 >
+                                     <Minimize2 size={14} />
+                                 </button>
+                             </div>
+
+                             <div className="w-px h-6 bg-slate-800 mx-1"></div>
+
+                             {/* View Mode Toggle */}
+                             <button 
+                                onClick={toggleGridView}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
+                                    isGridView 
+                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/40' 
+                                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                                }`}
+                             >
+                                {isGridView ? <LayoutGrid size={16} /> : <List size={16} />}
+                                {isGridView ? 'Compact Grid' : 'Standard View'}
+                             </button>
+                         </div>
                     </div>
                     
                     {loading ? (
@@ -342,7 +403,11 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                             No active protocols found. Define a new goal in the left panel to begin.
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 items-start">
+                        <div className={`grid gap-6 items-start transition-all duration-300 ease-in-out ${
+                            isGridView 
+                            ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
+                            : 'grid-cols-1 2xl:grid-cols-2'
+                        }`}>
                             {goals.map(goal => {
                                 const isCollapsed = collapsedGoals.has(goal.id);
                                 const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
@@ -437,7 +502,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                             <Edit2 size={16} />
                                                         </button>
                                                     </div>
-                                                    <p className="text-slate-400 text-sm mt-1 whitespace-pre-wrap">{goal.description}</p>
+                                                    <p className={`text-slate-400 text-sm mt-1 whitespace-pre-wrap ${isCollapsed ? 'line-clamp-2' : ''}`}>{goal.description}</p>
                                                 </div>
                                             )}
 
