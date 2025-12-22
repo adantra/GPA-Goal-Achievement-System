@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createGoal } from '../services/goalController';
-import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot, Zap, ArrowRight, Target } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot, Zap, ArrowRight, Target, Minimize2, Info } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -29,6 +29,10 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
     // Expansion State
     const [isExpanding, setIsExpanding] = useState(false);
     const [expansionSuggestions, setExpansionSuggestions] = useState<ExpansionSuggestion[] | null>(null);
+
+    // Simplification State
+    const [isSimplifying, setIsSimplifying] = useState(false);
+    const [simplificationSuggestions, setSimplificationSuggestions] = useState<ExpansionSuggestion[] | null>(null);
 
     // Goldilocks logic helpers
     const isTooEasy = difficulty < 6;
@@ -74,7 +78,10 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                 Provide:
                 1. estimated_rating (integer 1-10)
                 2. reasoning (concise explanation)
-                3. suggestion (if outside 6-8, suggest how to adjust it to be within 6-8).
+                3. suggestion:
+                   - If rating < 6, suggest "Expanding Horizon" (increasing scope/ambition).
+                   - If rating > 8, suggest "Reducing Scope" (breaking it down).
+                   - If 6-8, suggest a minor tweak for clarity.
             `;
 
             const response = await ai.models.generateContent({
@@ -101,6 +108,8 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                      reasoning: data.reasoning,
                      suggestion: data.suggestion
                  });
+                 // Optional: Auto-set difficulty if the user hasn't touched it much? 
+                 // Better to let user apply it manually via the UI button provided.
             }
         } catch (err: any) {
             console.error(err);
@@ -116,15 +125,16 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
         setIsExpanding(true);
         setError(null);
         setExpansionSuggestions(null);
+        setSimplificationSuggestions(null);
 
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const prompt = `
-                The user has proposed a goal that is too simple to sustain dopamine-driven pursuit: "${title}".
+                The user has proposed a goal that is too simple (Low Arousal): "${title}".
                 Current Description: "${description}"
 
-                Suggest 3 more "encompassing" and ambitious versions of this goal that would hit a difficulty of 7 or 8 on a 1-10 scale.
-                These should be meaningful expansions that bridge the user's current intent with a larger pursuit.
+                Suggest 3 "Expanded Horizon" versions of this goal that increase the challenge to the optimal "Goldilocks Zone" (Difficulty 7-8/10).
+                Focus on increasing the scale, intensity, or impact to maximize dopaminergic engagement.
 
                 For each suggestion provide:
                 1. title (action-oriented, punchy)
@@ -172,11 +182,75 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
         }
     };
 
+    const handleReduceScope = async () => {
+        if (!title || !process.env.API_KEY) return;
+
+        setIsSimplifying(true);
+        setError(null);
+        setSimplificationSuggestions(null);
+        setExpansionSuggestions(null);
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const prompt = `
+                The user has proposed a goal that is likely too overwhelming (High Friction/Anxiety): "${title}".
+                Current Description: "${description}"
+
+                Suggest 3 "Reduced Scope" versions of this goal that bring it down to the optimal "Goldilocks Zone" (Difficulty 6-8/10).
+                Focus on creating concrete "Stepping Stones" or "Minimum Viable Protocols" that reduce amygdala resistance while maintaining progress.
+
+                For each suggestion provide:
+                1. title (action-oriented, precise)
+                2. description (clear, achievable steps)
+                3. reasoning (why this lower friction approach works neuro-biologically)
+                4. difficulty (fixed between 6 and 8)
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            suggestions: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        description: { type: Type.STRING },
+                                        reasoning: { type: Type.STRING },
+                                        difficulty: { type: Type.INTEGER }
+                                    },
+                                    required: ["title", "description", "reasoning", "difficulty"]
+                                }
+                            }
+                        },
+                        required: ["suggestions"]
+                    }
+                }
+            });
+
+            if (response.text) {
+                const data = JSON.parse(response.text);
+                setSimplificationSuggestions(data.suggestions);
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Neural reduction failed.");
+        } finally {
+            setIsSimplifying(false);
+        }
+    };
+
     const applySuggestion = (s: ExpansionSuggestion) => {
         setTitle(s.title);
         setDescription(s.description);
         setDifficulty(s.difficulty);
         setExpansionSuggestions(null);
+        setSimplificationSuggestions(null);
         setAiFeedback(null);
     };
 
@@ -199,6 +273,7 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
             setDifficulty(5);
             setAiFeedback(null);
             setExpansionSuggestions(null);
+            setSimplificationSuggestions(null);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -307,16 +382,19 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                     )}
 
                     {!isValid && (
-                        <div className="mt-4 p-3 bg-red-900/20 border border-red-900/50 rounded space-y-3">
+                        <div className={`mt-4 p-4 rounded-lg border flex flex-col gap-3 ${isTooEasy ? 'bg-blue-900/10 border-blue-900/40' : 'bg-red-900/10 border-red-900/40'}`}>
                             <div className="flex items-start gap-3">
-                                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                                <p className="text-sm text-red-300">
-                                    {isTooEasy 
-                                        ? <strong>Low Arousal Protocol:</strong> 
-                                        : <strong>High Cortisol Risk:</strong>
-                                    } 
-                                    {isTooEasy ? " This goal is too simple. For long-term neuro-plasticity, we need a higher 'Friction Score'." : " This goal is too complex and may trigger amygdala avoidance."}
-                                </p>
+                                {isTooEasy ? <Zap className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" /> : <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />}
+                                <div>
+                                    <h4 className={`text-sm font-bold mb-1 ${isTooEasy ? 'text-blue-300' : 'text-red-300'}`}>
+                                        {isTooEasy ? 'Protocol Too Simple (Low Arousal)' : 'Protocol Too Complex (High Friction)'}
+                                    </h4>
+                                    <p className={`text-xs ${isTooEasy ? 'text-blue-200/70' : 'text-red-200/70'}`}>
+                                        {isTooEasy 
+                                            ? "This goal lacks the necessary challenge to sustain dopaminergic drive. You need to expand the scope." 
+                                            : "This goal is likely to trigger amygdala-based avoidance. You need to reduce the scope to stepping stones."}
+                                    </p>
+                                </div>
                             </div>
 
                             {isTooEasy && (
@@ -324,10 +402,22 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                                     type="button"
                                     onClick={handleExpandHorizon}
                                     disabled={isExpanding || !title}
-                                    className="w-full py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg text-xs font-bold border border-indigo-500/40 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    className="w-full py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 rounded-lg text-xs font-bold border border-blue-500/40 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-1"
                                 >
-                                    {isExpanding ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                                    Expand Neural Horizon (Identify Bigger Goal)
+                                    {isExpanding ? <Loader2 size={14} className="animate-spin" /> : <Target size={14} />}
+                                    Expand Horizon (Increase Ambition)
+                                </button>
+                            )}
+
+                            {isTooHard && (
+                                <button
+                                    type="button"
+                                    onClick={handleReduceScope}
+                                    disabled={isSimplifying || !title}
+                                    className="w-full py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-lg text-xs font-bold border border-red-500/40 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-1"
+                                >
+                                    {isSimplifying ? <Loader2 size={14} className="animate-spin" /> : <Minimize2 size={14} />}
+                                    Reduce Scope (Break Down Goal)
                                 </button>
                             )}
                         </div>
@@ -336,18 +426,18 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                     {/* Expansion Suggestions List */}
                     {expansionSuggestions && (
                         <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-bottom-2">
-                            <div className="text-[10px] text-slate-500 uppercase tracking-widest font-bold flex items-center gap-2">
-                                <Target size={10} /> Optimized Neural Protocols
+                            <div className="text-[10px] text-blue-400 uppercase tracking-widest font-bold flex items-center gap-2">
+                                <Target size={10} /> Expanded Protocols
                             </div>
                             {expansionSuggestions.map((s, i) => (
                                 <div 
                                     key={i} 
                                     onClick={() => applySuggestion(s)}
-                                    className="p-3 bg-slate-950/50 border border-indigo-500/20 rounded-lg cursor-pointer hover:border-indigo-500/60 hover:bg-slate-950 transition-all group"
+                                    className="p-3 bg-slate-950/50 border border-blue-500/20 rounded-lg cursor-pointer hover:border-blue-500/60 hover:bg-slate-950 transition-all group"
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <h5 className="text-sm font-bold text-indigo-300 group-hover:text-indigo-200 transition-colors">{s.title}</h5>
-                                        <div className="text-[10px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/20">LVL {s.difficulty}</div>
+                                        <h5 className="text-sm font-bold text-blue-300 group-hover:text-blue-200 transition-colors">{s.title}</h5>
+                                        <div className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">LVL {s.difficulty}</div>
                                     </div>
                                     <p className="text-xs text-slate-400 mb-2 line-clamp-2">{s.description}</p>
                                     <div className="flex items-center gap-1.5 text-[10px] text-emerald-500 font-mono">
@@ -357,6 +447,37 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                             ))}
                             <button 
                                 onClick={() => setExpansionSuggestions(null)}
+                                className="w-full text-[10px] text-slate-600 hover:text-slate-400 py-1"
+                            >
+                                Dismiss Suggestions
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Simplification Suggestions List */}
+                    {simplificationSuggestions && (
+                        <div className="mt-4 space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                            <div className="text-[10px] text-red-400 uppercase tracking-widest font-bold flex items-center gap-2">
+                                <Minimize2 size={10} /> Reduced Scope Protocols
+                            </div>
+                            {simplificationSuggestions.map((s, i) => (
+                                <div 
+                                    key={i} 
+                                    onClick={() => applySuggestion(s)}
+                                    className="p-3 bg-slate-950/50 border border-emerald-500/20 rounded-lg cursor-pointer hover:border-emerald-500/60 hover:bg-slate-950 transition-all group"
+                                >
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h5 className="text-sm font-bold text-emerald-300 group-hover:text-emerald-200 transition-colors">{s.title}</h5>
+                                        <div className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">LVL {s.difficulty}</div>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mb-2 line-clamp-2">{s.description}</p>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-indigo-400 font-mono">
+                                        <CheckCircle size={10} /> {s.reasoning}
+                                    </div>
+                                </div>
+                            ))}
+                            <button 
+                                onClick={() => setSimplificationSuggestions(null)}
                                 className="w-full text-[10px] text-slate-600 hover:text-slate-400 py-1"
                             >
                                 Dismiss Suggestions
