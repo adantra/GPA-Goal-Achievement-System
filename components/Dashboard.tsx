@@ -6,10 +6,11 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
+import ScheduleGenerator from './ScheduleGenerator';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -21,6 +22,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [loading, setLoading] = useState(true);
     const [showSpaceTime, setShowSpaceTime] = useState(false);
     const [showAmygdala, setShowAmygdala] = useState(false);
+    const [showSchedule, setShowSchedule] = useState(false);
     const [rewardMessage, setRewardMessage] = useState<string | null>(null);
     const currentUser = getCurrentUser();
 
@@ -246,6 +248,10 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 onClose={() => setShowAssistant(false)}
                 contextData={assistantContext}
             />
+            
+            {showSchedule && (
+                <ScheduleGenerator goals={goals} onClose={() => setShowSchedule(false)} />
+            )}
 
             {rewardMessage && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
@@ -303,6 +309,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                  </button>
                                  <button onClick={() => setShowAmygdala(true)} className="w-full py-3 bg-red-900/20 hover:bg-red-900/40 border border-red-500/20 text-red-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
                                      <Flame size={16} /> Amygdala Protocol
+                                 </button>
+                                 <button onClick={() => setShowSchedule(true)} className="w-full py-3 bg-sky-900/20 hover:bg-sky-900/40 border border-sky-500/20 text-sky-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
+                                     <CalendarClock size={16} /> Neuro-Chronology
                                  </button>
                              </div>
                         </div>
@@ -423,19 +432,33 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                         <div className={`h-full ${goal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }}></div>
                                                     </div>
                                                 </div>
-                                                <span className="text-slate-600 group-hover:text-slate-400 transition-colors">Show details</span>
+                                                <span>Expand details</span>
                                             </div>
                                         )}
 
-                                        {!isCollapsed && (
-                                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                                <div className="space-y-3 mt-6 border-t border-slate-800 pt-6">
-                                                    {goal.milestones.length === 0 && <p className="text-slate-600 text-sm">No milestones defined yet.</p>}
-                                                    {goal.milestones.map(milestone => (
-                                                        <MilestoneItem key={milestone.id} milestone={milestone} onUpdate={loadGoals} onReward={handleReward} />
-                                                    ))}
-                                                </div>
-                                                <MilestoneInput goalId={goal.id} goalTitle={goal.title} goalDescription={goal.description} onMilestoneCreated={loadGoals} />
+                                        {!isCollapsed && !isEditing && (
+                                            <div className="mt-6 space-y-4 animate-in fade-in duration-300">
+                                                {goal.milestones.length === 0 ? (
+                                                    <p className="text-slate-600 italic text-sm">No milestones defined yet. Break this goal down.</p>
+                                                ) : (
+                                                    <div className="space-y-3">
+                                                        {goal.milestones.map(milestone => (
+                                                            <MilestoneItem 
+                                                                key={milestone.id} 
+                                                                milestone={milestone} 
+                                                                onUpdate={loadGoals}
+                                                                onReward={handleReward}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                
+                                                <MilestoneInput 
+                                                    goalId={goal.id} 
+                                                    goalTitle={goal.title}
+                                                    goalDescription={goal.description}
+                                                    onMilestoneCreated={loadGoals} 
+                                                />
                                             </div>
                                         )}
                                     </div>

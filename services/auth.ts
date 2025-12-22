@@ -71,7 +71,7 @@ export const loginAsDemo = async (): Promise<User> => {
 
     // Construct Demo Data with comprehensive life aspects
     const demoGoals: Goal[] = [
-        // 1. PHYSICAL
+        // 1. PHYSICAL (EXERCISE)
         {
             id: 'demo-goal-1',
             title: 'Somatic Architecture: Hypertrophy Phase 1',
@@ -114,7 +114,28 @@ export const loginAsDemo = async (): Promise<User> => {
                 }
             ]
         },
-        // 2. COGNITIVE / CAREER
+        // 2. MEDITATION / MINDFULNESS
+        {
+            id: 'demo-goal-5',
+            title: 'Cortical Thickening: Mindfulness Protocol',
+            description: 'Daily training of the anterior cingulate cortex to improve focus, reduce amygdala reactivity, and enhance emotional regulation.',
+            difficultyRating: 6,
+            status: 'active',
+            milestones: [
+                {
+                    id: 'm5-1',
+                    goalId: 'demo-goal-5',
+                    title: 'The 10-Minute Baseline',
+                    isCompleted: false,
+                    rewardReceived: RewardType.NONE,
+                    actions: [
+                        { id: 'a5-1', description: 'Practice 10m of NSDR (Non-Sleep Deep Rest) or breath focus daily', type: ActionType.GO },
+                        { id: 'a5-2', description: 'No guided apps with background music (silence/voice only)', type: ActionType.NO_GO }
+                    ]
+                }
+            ]
+        },
+        // 3. COGNITIVE / CAREER
         {
             id: 'demo-goal-2',
             title: 'Deep Work: Cognitive Optimization',
@@ -143,21 +164,10 @@ export const loginAsDemo = async (): Promise<User> => {
                         { id: 'a2-3', description: 'Write 1000 words before breakfast', type: ActionType.GO },
                         { id: 'a2-4', description: 'Phone must remain in another room until 10 AM', type: ActionType.NO_GO }
                     ]
-                },
-                {
-                    id: 'm2-3',
-                    goalId: 'demo-goal-2',
-                    title: 'Systematization of Input',
-                    isCompleted: false,
-                    rewardReceived: RewardType.NONE,
-                    actions: [
-                        { id: 'a2-5', description: 'Read 30 pages of a density-rich book daily', type: ActionType.GO },
-                        { id: 'a2-6', description: 'No news websites or algorithmic feeds', type: ActionType.NO_GO }
-                    ]
                 }
             ]
         },
-        // 3. RESTORATIVE / BIOLOGICAL
+        // 4. RESTORATIVE / BIOLOGICAL
         {
             id: 'demo-goal-3',
             title: 'Circadian Rhythm Synchronization',
@@ -186,21 +196,10 @@ export const loginAsDemo = async (): Promise<User> => {
                         { id: 'a3-3', description: 'Wear blue-light blocking glasses after 8 PM', type: ActionType.GO },
                         { id: 'a3-4', description: 'No overhead lights on after sunset', type: ActionType.NO_GO }
                     ]
-                },
-                {
-                    id: 'm3-3',
-                    goalId: 'demo-goal-3',
-                    title: 'Phase 3: Thermal Regulation',
-                    isCompleted: false,
-                    rewardReceived: RewardType.NONE,
-                    actions: [
-                        { id: 'a3-5', description: 'Sleep in a room at 18°C (65°F)', type: ActionType.GO },
-                        { id: 'a3-6', description: 'No eating within 3 hours of bedtime', type: ActionType.NO_GO }
-                    ]
                 }
             ]
         },
-        // 4. LEARNING / SKILL
+        // 5. LEARNING / SKILL
         {
             id: 'demo-goal-4',
             title: 'Neural Linguistic Programming: Spanish',
@@ -217,28 +216,6 @@ export const loginAsDemo = async (): Promise<User> => {
                     actions: [
                         { id: 'a4-1', description: 'Review Anki deck for 20 mins daily', type: ActionType.GO },
                         { id: 'a4-2', description: 'No skipping days (maintain streak)', type: ActionType.NO_GO }
-                    ]
-                },
-                {
-                    id: 'm4-2',
-                    goalId: 'demo-goal-4',
-                    title: 'Auditory Immersion',
-                    isCompleted: false,
-                    rewardReceived: RewardType.NONE,
-                    actions: [
-                        { id: 'a4-3', description: 'Listen to "News in Slow Spanish" during commute', type: ActionType.GO },
-                        { id: 'a4-4', description: 'No English subtitles when watching Spanish media', type: ActionType.NO_GO }
-                    ]
-                },
-                {
-                    id: 'm4-3',
-                    goalId: 'demo-goal-4',
-                    title: 'Output Generation',
-                    isCompleted: false,
-                    rewardReceived: RewardType.NONE,
-                    actions: [
-                        { id: 'a4-5', description: 'Have a 15 min conversation with a native speaker (iTalki)', type: ActionType.GO },
-                        { id: 'a4-6', description: 'Do not revert to English when stuck', type: ActionType.NO_GO }
                     ]
                 }
             ]
