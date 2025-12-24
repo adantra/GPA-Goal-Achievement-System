@@ -69,6 +69,24 @@ export const loginAsDemo = async (): Promise<User> => {
         password: 'demo'
     };
 
+    // Helper to generate dynamic dates
+    const daysFromNow = (days: number) => {
+        const d = new Date();
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split('T')[0];
+    };
+    
+    // Helper to generate comments
+    const createComment = (text: string, daysAgo: number = 0) => {
+        const d = new Date();
+        d.setDate(d.getDate() - daysAgo);
+        return {
+            id: crypto.randomUUID(),
+            text,
+            createdAt: d.toISOString()
+        };
+    };
+
     // Construct Demo Data with comprehensive life aspects
     const demoGoals: Goal[] = [
         // 1. PHYSICAL (EXERCISE)
@@ -85,9 +103,14 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'Week 1: Neuromuscular Wake-up',
                     isCompleted: true,
                     rewardReceived: RewardType.STANDARD,
+                    deadline: daysFromNow(-7), // Completed last week
                     actions: [
                         { id: 'a1-1', description: 'Train 4 days per week (Upper/Lower split)', type: ActionType.GO },
                         { id: 'a1-2', description: 'No missed protein targets (180g daily)', type: ActionType.NO_GO }
+                    ],
+                    comments: [
+                        createComment("Felt surprisingly strong on the squats.", 8),
+                        createComment("Missed protein on Tuesday but made up for it Wed.", 7)
                     ]
                 },
                 {
@@ -96,10 +119,12 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'Week 2: Volume Accumulation',
                     isCompleted: true,
                     rewardReceived: RewardType.NONE, // RPE didn't hit
+                    deadline: daysFromNow(-1), // Completed yesterday
                     actions: [
                         { id: 'a1-3', description: 'Increase reps by 1-2 on compound lifts', type: ActionType.GO },
                         { id: 'a1-4', description: 'Do not scroll phone during rest periods', type: ActionType.NO_GO }
-                    ]
+                    ],
+                    comments: []
                 },
                 {
                     id: 'm1-3',
@@ -107,10 +132,12 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'Week 3: Intensity Peak',
                     isCompleted: false,
                     rewardReceived: RewardType.NONE,
+                    deadline: daysFromNow(6), // Due next week
                     actions: [
                         { id: 'a1-5', description: 'Hit failure on final set of isolation exercises', type: ActionType.GO },
                         { id: 'a1-6', description: 'Avoid alcohol completely to maximize recovery', type: ActionType.NO_GO }
-                    ]
+                    ],
+                    comments: []
                 }
             ]
         },
@@ -128,9 +155,13 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'The 10-Minute Baseline',
                     isCompleted: false,
                     rewardReceived: RewardType.NONE,
+                    deadline: daysFromNow(0), // Due today
                     actions: [
                         { id: 'a5-1', description: 'Practice 10m of NSDR (Non-Sleep Deep Rest) or breath focus daily', type: ActionType.GO },
                         { id: 'a5-2', description: 'No guided apps with background music (silence/voice only)', type: ActionType.NO_GO }
+                    ],
+                    comments: [
+                        createComment("Struggled to sit still today. Too much caffeine.", 0)
                     ]
                 }
             ]
@@ -149,10 +180,12 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'The Digital Detox Weekend',
                     isCompleted: true,
                     rewardReceived: RewardType.JACKPOT,
+                    deadline: daysFromNow(-14),
                     actions: [
                         { id: 'a2-1', description: '24 hours without screens (Saturday)', type: ActionType.GO },
                         { id: 'a2-2', description: 'No checking email before noon', type: ActionType.NO_GO }
-                    ]
+                    ],
+                    comments: []
                 },
                 {
                     id: 'm2-2',
@@ -160,10 +193,12 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'Protocol: Monk Mode Mornings',
                     isCompleted: false,
                     rewardReceived: RewardType.NONE,
+                    deadline: daysFromNow(-2), // Overdue!
                     actions: [
                         { id: 'a2-3', description: 'Write 1000 words before breakfast', type: ActionType.GO },
                         { id: 'a2-4', description: 'Phone must remain in another room until 10 AM', type: ActionType.NO_GO }
-                    ]
+                    ],
+                    comments: []
                 }
             ]
         },
@@ -181,10 +216,12 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'Phase 1: Solar Calibration',
                     isCompleted: true,
                     rewardReceived: RewardType.STANDARD,
+                    deadline: daysFromNow(-20),
                     actions: [
                         { id: 'a3-1', description: 'View 10m of direct sunlight within 30m of waking', type: ActionType.GO },
                         { id: 'a3-2', description: 'No sunglasses during morning walk', type: ActionType.NO_GO }
-                    ]
+                    ],
+                    comments: []
                 },
                 {
                     id: 'm3-2',
@@ -192,10 +229,12 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'Phase 2: The Sunset Rule',
                     isCompleted: false,
                     rewardReceived: RewardType.NONE,
+                    deadline: daysFromNow(5),
                     actions: [
                         { id: 'a3-3', description: 'Wear blue-light blocking glasses after 8 PM', type: ActionType.GO },
                         { id: 'a3-4', description: 'No overhead lights on after sunset', type: ActionType.NO_GO }
-                    ]
+                    ],
+                    comments: []
                 }
             ]
         },
@@ -213,10 +252,12 @@ export const loginAsDemo = async (): Promise<User> => {
                     title: 'Vocab Upload: The First 500',
                     isCompleted: true,
                     rewardReceived: RewardType.NONE,
+                    deadline: daysFromNow(-3),
                     actions: [
                         { id: 'a4-1', description: 'Review Anki deck for 20 mins daily', type: ActionType.GO },
                         { id: 'a4-2', description: 'No skipping days (maintain streak)', type: ActionType.NO_GO }
-                    ]
+                    ],
+                    comments: []
                 }
             ]
         }

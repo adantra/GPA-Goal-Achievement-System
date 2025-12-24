@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActionType, Action } from '../types';
-import { Plus, X, ShieldAlert, ArrowRightCircle, Sparkles, Loader2, Check } from 'lucide-react';
+import { Plus, X, ShieldAlert, ArrowRightCircle, Sparkles, Loader2, Check, Calendar } from 'lucide-react';
 import { createMilestone } from '../services/milestoneController';
 import { GoogleGenAI, Type } from "@google/genai";
 
@@ -21,6 +21,15 @@ interface MilestoneOption {
 const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, onMilestoneCreated }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [title, setTitle] = useState('');
+    
+    // Default deadline to 1 week from now
+    const getDefaultDeadline = () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        return d.toISOString().split('T')[0];
+    };
+    
+    const [deadline, setDeadline] = useState(getDefaultDeadline());
     const [goActions, setGoActions] = useState<string[]>([]);
     const [noGoActions, setNoGoActions] = useState<string[]>([]);
     const [currentGo, setCurrentGo] = useState('');
@@ -57,6 +66,7 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
     const handleCancel = () => {
         setIsExpanded(false);
         setTitle('');
+        setDeadline(getDefaultDeadline());
         setGoActions([]);
         setNoGoActions([]);
         setCurrentGo('');
@@ -148,7 +158,7 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
         setAiOptions(null);
     };
 
-    const isValid = title.trim().length > 0 && goActions.length > 0 && noGoActions.length > 0;
+    const isValid = title.trim().length > 0 && goActions.length > 0 && noGoActions.length > 0 && deadline;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -163,7 +173,7 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
         ];
 
         try {
-            await createMilestone(goalId, title, actions);
+            await createMilestone(goalId, title, deadline, actions);
             onMilestoneCreated();
             // Reset form and collapse
             handleCancel();
@@ -255,15 +265,29 @@ const MilestoneInput: React.FC<Props> = ({ goalId, goalTitle, goalDescription, o
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label className="block text-sm text-slate-400 mb-1">Milestone Title</label>
-                    <input
-                        value={title}
-                        onChange={e => setTitle(e.target.value)}
-                        placeholder="e.g., Week 1 Training Log"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-indigo-500"
-                        autoFocus
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-sm text-slate-400 mb-1">Milestone Title</label>
+                        <input
+                            value={title}
+                            onChange={e => setTitle(e.target.value)}
+                            placeholder="e.g., Week 1 Training Log"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-indigo-500"
+                            autoFocus
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm text-slate-400 mb-1 flex items-center gap-2">
+                            <Calendar size={14} /> Target Completion Date
+                        </label>
+                        <input
+                            type="date"
+                            value={deadline}
+                            onChange={e => setDeadline(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-indigo-500 [color-scheme:dark]"
+                            required
+                        />
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

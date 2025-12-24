@@ -1,4 +1,4 @@
-import { Milestone, RewardType, Action } from '../types';
+import { Milestone, RewardType, Action, Comment } from '../types';
 import { addMilestoneToGoal, updateMilestoneInGoal, getGoals, removeMilestoneFromGoal } from './goalController';
 import { getCurrentUser } from './auth';
 
@@ -12,7 +12,7 @@ const getAllMilestones = async (): Promise<Milestone[]> => {
 /**
  * Simulates POST /milestones
  */
-export const createMilestone = async (goalId: string, title: string, actions: Omit<Action, 'id'>[]): Promise<Milestone> => {
+export const createMilestone = async (goalId: string, title: string, deadline: string, actions: Omit<Action, 'id'>[]): Promise<Milestone> => {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // --- GO/NO-GO OBLIGATION VALIDATION ---
@@ -27,9 +27,11 @@ export const createMilestone = async (goalId: string, title: string, actions: Om
         id: crypto.randomUUID(),
         goalId,
         title,
+        deadline,
         isCompleted: false,
         rewardReceived: RewardType.NONE,
-        actions: actions.map(a => ({ ...a, id: crypto.randomUUID() }))
+        actions: actions.map(a => ({ ...a, id: crypto.randomUUID() })),
+        comments: []
     };
 
     // Save to Goal structure (Storage source of truth)
@@ -41,7 +43,7 @@ export const createMilestone = async (goalId: string, title: string, actions: Om
 /**
  * Updates an existing milestone.
  */
-export const updateMilestone = async (id: string, updates: Partial<Pick<Milestone, 'title' | 'actions'>>): Promise<Milestone> => {
+export const updateMilestone = async (id: string, updates: Partial<Pick<Milestone, 'title' | 'actions' | 'deadline'>>): Promise<Milestone> => {
     await new Promise(resolve => setTimeout(resolve, 400));
 
     const milestones = await getAllMilestones();
@@ -122,4 +124,37 @@ export const completeMilestone = async (id: string): Promise<{ milestone: Milest
             ? "JACKPOT REWARD TRIGGERED! Unexpected dopamine release maximized." 
             : "Standard completion recorded. Keep pushing."
     };
+};
+
+export const addComment = async (milestoneId: string, text: string): Promise<Comment> => {
+    const milestones = await getAllMilestones();
+    const milestone = milestones.find(m => m.id === milestoneId);
+    if (!milestone) throw new Error("Milestone not found");
+
+    const newComment: Comment = {
+        id: crypto.randomUUID(),
+        text,
+        createdAt: new Date().toISOString()
+    };
+    
+    const updatedMilestone = {
+        ...milestone,
+        comments: [...(milestone.comments || []), newComment]
+    };
+    
+    await updateMilestoneInGoal(milestone.goalId, updatedMilestone);
+    return newComment;
+};
+
+export const deleteComment = async (milestoneId: string, commentId: string): Promise<void> => {
+    const milestones = await getAllMilestones();
+    const milestone = milestones.find(m => m.id === milestoneId);
+    if (!milestone) throw new Error("Milestone not found");
+
+    const updatedMilestone = {
+        ...milestone,
+        comments: (milestone.comments || []).filter(c => c.id !== commentId)
+    };
+
+    await updateMilestoneInGoal(milestone.goalId, updatedMilestone);
 };

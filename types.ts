@@ -23,13 +23,21 @@ export interface Action {
   type: ActionType;
 }
 
+export interface Comment {
+  id: string;
+  text: string;
+  createdAt: string; // ISO Date String
+}
+
 export interface Milestone {
   id: string;
   goalId: string;
   title: string;
   isCompleted: boolean;
   rewardReceived: RewardType;
+  deadline?: string; // ISO Date String YYYY-MM-DD
   actions: Action[];
+  comments: Comment[];
 }
 
 export interface Goal {
