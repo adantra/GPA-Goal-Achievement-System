@@ -581,7 +581,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                             </span>
                                                         </div>
                                                         <p className="text-sm text-slate-400 mb-2 italic">"{goal.aiAssessment.reasoning}"</p>
-                                                        <div className="flex items-center gap-3 text-xs">
+                                                        <div className="flex items-center gap-3 text-xs mb-3">
                                                             <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-300">
                                                                 Est. Difficulty: {goal.aiAssessment.estimatedRating}/10
                                                             </span>
@@ -589,6 +589,17 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                                 Suggestion: {goal.aiAssessment.suggestion}
                                                             </span>
                                                         </div>
+                                                        
+                                                        {goal.aiAssessment.alternativeActions && goal.aiAssessment.alternativeActions.length > 0 && (
+                                                            <div className="mt-2 pt-2 border-t border-indigo-500/20">
+                                                                <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block mb-1">Suggested Starting Points:</span>
+                                                                <ul className="list-disc list-inside text-xs text-slate-400 space-y-0.5">
+                                                                    {goal.aiAssessment.alternativeActions.map((action, i) => (
+                                                                        <li key={i}>{action}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
 

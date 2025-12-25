@@ -24,7 +24,12 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
     
     // AI Assessment State
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [aiFeedback, setAiFeedback] = useState<{ rating: number; reasoning: string; suggestion: string } | null>(null);
+    const [aiFeedback, setAiFeedback] = useState<{ 
+        rating: number; 
+        reasoning: string; 
+        suggestion: string;
+        alternativeActions?: string[];
+    } | null>(null);
 
     // Expansion State
     const [isExpanding, setIsExpanding] = useState(false);
@@ -82,6 +87,7 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                    - If rating < 6, suggest "Expanding Horizon" (increasing scope/ambition).
                    - If rating > 8, suggest "Reducing Scope" (breaking it down).
                    - If 6-8, suggest a minor tweak for clarity.
+                4. alternative_actions: A list of 3 concrete, immediate micro-actions or starting points the user could take to begin this goal.
             `;
 
             const response = await ai.models.generateContent({
@@ -94,9 +100,13 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                         properties: {
                             estimated_rating: { type: Type.INTEGER },
                             reasoning: { type: Type.STRING },
-                            suggestion: { type: Type.STRING }
+                            suggestion: { type: Type.STRING },
+                            alternative_actions: { 
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
+                            }
                         },
-                        required: ["estimated_rating", "reasoning", "suggestion"]
+                        required: ["estimated_rating", "reasoning", "suggestion", "alternative_actions"]
                     }
                 }
             });
@@ -106,7 +116,8 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                  setAiFeedback({
                      rating: data.estimated_rating,
                      reasoning: data.reasoning,
-                     suggestion: data.suggestion
+                     suggestion: data.suggestion,
+                     alternativeActions: data.alternative_actions
                  });
                  // Optional: Auto-set difficulty if the user hasn't touched it much? 
                  // Better to let user apply it manually via the UI button provided.
@@ -271,6 +282,7 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                     estimatedRating: aiFeedback.rating,
                     reasoning: aiFeedback.reasoning,
                     suggestion: aiFeedback.suggestion,
+                    alternativeActions: aiFeedback.alternativeActions,
                     timestamp: new Date().toISOString()
                 } : undefined
             });
@@ -385,9 +397,19 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                             <div className="text-slate-400 text-xs italic border-l-2 border-indigo-500/30 pl-3 mb-2">
                                 "Suggestion: {aiFeedback.suggestion}"
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium">
+                            {aiFeedback.alternativeActions && aiFeedback.alternativeActions.length > 0 && (
+                                <div className="mt-3 bg-black/20 p-2 rounded border border-indigo-500/10">
+                                    <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block mb-1">Suggested Starting Points:</span>
+                                    <ul className="list-disc list-inside text-xs text-slate-400 space-y-1">
+                                        {aiFeedback.alternativeActions.map((action, i) => (
+                                            <li key={i}>{action}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium mt-3">
                                 <Brain size={12} />
-                                Analysis will be attached to protocol upon creation.
+                                Analysis & suggestions will be attached to protocol upon creation.
                             </div>
                         </div>
                     )}

@@ -36,6 +36,7 @@ export interface AIAssessment {
   estimatedRating: number;
   reasoning: string;
   suggestion: string;
+  alternativeActions?: string[];
   timestamp: string;
 }
 
