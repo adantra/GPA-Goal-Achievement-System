@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createGoal } from '../services/goalController';
-import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot, Zap, ArrowRight, Target, Minimize2, Info } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot, Zap, ArrowRight, Target, Minimize2, Info, Brain } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -265,7 +265,14 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
             await createGoal({
                 title,
                 description,
-                difficultyRating: difficulty
+                difficultyRating: difficulty,
+                // Persist AI Assessment if available, regardless of whether user followed it perfectly
+                aiAssessment: aiFeedback ? {
+                    estimatedRating: aiFeedback.rating,
+                    reasoning: aiFeedback.reasoning,
+                    suggestion: aiFeedback.suggestion,
+                    timestamp: new Date().toISOString()
+                } : undefined
             });
             onGoalCreated();
             setTitle('');
@@ -375,8 +382,12 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                                 )}
                             </div>
                             <p className="text-slate-300 text-sm mb-2">{aiFeedback.reasoning}</p>
-                            <div className="text-slate-400 text-xs italic border-l-2 border-indigo-500/30 pl-3">
+                            <div className="text-slate-400 text-xs italic border-l-2 border-indigo-500/30 pl-3 mb-2">
                                 "Suggestion: {aiFeedback.suggestion}"
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-medium">
+                                <Brain size={12} />
+                                Analysis will be attached to protocol upon creation.
                             </div>
                         </div>
                     )}

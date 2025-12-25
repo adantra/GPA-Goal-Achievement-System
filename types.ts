@@ -23,10 +23,20 @@ export interface Action {
   type: ActionType;
 }
 
+export type CommentType = 'log' | 'insight' | 'blocker' | 'win';
+
 export interface Comment {
   id: string;
   text: string;
+  type?: CommentType; // Optional for backward compatibility
   createdAt: string; // ISO Date String
+}
+
+export interface AIAssessment {
+  estimatedRating: number;
+  reasoning: string;
+  suggestion: string;
+  timestamp: string;
 }
 
 export interface Milestone {
@@ -47,6 +57,7 @@ export interface Goal {
   difficultyRating: number;
   status: 'active' | 'completed' | 'archived';
   milestones: Milestone[];
+  aiAssessment?: AIAssessment;
 }
 
 export interface SpaceTimePhase {

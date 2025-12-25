@@ -1,4 +1,4 @@
-import { Milestone, RewardType, Action, Comment } from '../types';
+import { Milestone, RewardType, Action, Comment, CommentType } from '../types';
 import { addMilestoneToGoal, updateMilestoneInGoal, getGoals, removeMilestoneFromGoal } from './goalController';
 import { getCurrentUser } from './auth';
 
@@ -126,7 +126,7 @@ export const completeMilestone = async (id: string): Promise<{ milestone: Milest
     };
 };
 
-export const addComment = async (milestoneId: string, text: string): Promise<Comment> => {
+export const addComment = async (milestoneId: string, text: string, type: CommentType = 'log'): Promise<Comment> => {
     const milestones = await getAllMilestones();
     const milestone = milestones.find(m => m.id === milestoneId);
     if (!milestone) throw new Error("Milestone not found");
@@ -134,6 +134,7 @@ export const addComment = async (milestoneId: string, text: string): Promise<Com
     const newComment: Comment = {
         id: crypto.randomUUID(),
         text,
+        type,
         createdAt: new Date().toISOString()
     };
     

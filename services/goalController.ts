@@ -42,7 +42,8 @@ export const createGoal = async (data: Omit<Goal, 'id' | 'status' | 'milestones'
         description: data.description,
         difficultyRating: data.difficultyRating,
         status: 'active',
-        milestones: []
+        milestones: [],
+        aiAssessment: data.aiAssessment
     };
 
     const goals = readGoals();

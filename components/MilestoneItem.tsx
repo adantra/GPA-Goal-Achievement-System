@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Milestone, ActionType, Action, RewardType } from '../types';
+import { Milestone, ActionType, Action, RewardType, CommentType } from '../types';
 import { updateMilestone, deleteMilestone, completeMilestone, addComment, deleteComment } from '../services/milestoneController';
-import { Trophy, Check, Edit2, Trash2, X, Plus, Save, ArrowRightCircle, ShieldAlert, Calendar, AlertTriangle, MessageSquare, Send } from 'lucide-react';
+import { Trophy, Check, Edit2, Trash2, X, Plus, Save, ArrowRightCircle, ShieldAlert, Calendar, AlertTriangle, MessageSquare, Send, Lightbulb, CloudRain, Flame, FileText } from 'lucide-react';
 
 interface Props {
     milestone: Milestone;
@@ -16,6 +16,7 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
     // Comments State
     const [showComments, setShowComments] = useState(false);
     const [newComment, setNewComment] = useState('');
+    const [commentType, setCommentType] = useState<CommentType>('log');
     const [isPostingComment, setIsPostingComment] = useState(false);
     
     // Edit State
@@ -100,8 +101,9 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
         if (!newComment.trim()) return;
         setIsPostingComment(true);
         try {
-            await addComment(milestone.id, newComment.trim());
+            await addComment(milestone.id, newComment.trim(), commentType);
             setNewComment('');
+            setCommentType('log'); // Reset to default
             onUpdate();
         } catch (error) {
             console.error(error);
@@ -118,6 +120,24 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
             } catch (error) {
                 console.error(error);
             }
+        }
+    };
+
+    const getCommentIcon = (type?: CommentType) => {
+        switch(type) {
+            case 'insight': return <Lightbulb size={12} className="text-yellow-400" />;
+            case 'blocker': return <CloudRain size={12} className="text-blue-400" />;
+            case 'win': return <Flame size={12} className="text-orange-400" />;
+            default: return <FileText size={12} className="text-slate-400" />;
+        }
+    };
+
+    const getCommentBorder = (type?: CommentType) => {
+        switch(type) {
+            case 'insight': return 'border-yellow-500/30 bg-yellow-900/10';
+            case 'blocker': return 'border-blue-500/30 bg-blue-900/10';
+            case 'win': return 'border-orange-500/30 bg-orange-900/10';
+            default: return 'border-slate-700 bg-slate-900/50';
         }
     };
 
@@ -256,9 +276,9 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
                             {milestone.title}
                         </h4>
                         
-                        {/* Deadline Badge */}
+                        {/* Deadline Badge - Converted text-[10px] to text-[0.7rem] relative units */}
                         {!milestone.isCompleted && deadlineStatus && (
-                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wide ${deadlineStatus.color} ${deadlineStatus.bg}`}>
+                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[0.7rem] font-bold uppercase tracking-wide ${deadlineStatus.color} ${deadlineStatus.bg}`}>
                                 {deadlineStatus.text.includes('Overdue') ? <AlertTriangle size={10} /> : <Calendar size={10} />}
                                 {deadlineStatus.text}
                             </div>
@@ -335,38 +355,69 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
                             <p className="text-xs text-slate-600 italic">No logs recorded yet.</p>
                         ) : (
                             comments.map(comment => (
-                                <div key={comment.id} className="bg-slate-900/50 p-3 rounded-lg border border-slate-700 group relative">
-                                    <p className="text-sm text-slate-300 pr-6">{comment.text}</p>
-                                    <div className="text-[10px] text-slate-500 mt-1 flex justify-between items-center">
-                                        <span>{new Date(comment.createdAt).toLocaleString()}</span>
-                                        <button 
-                                            onClick={() => handleDeleteComment(comment.id)}
-                                            className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-opacity absolute top-2 right-2 p-1"
-                                        >
-                                            <Trash2 size={12} />
-                                        </button>
+                                <div key={comment.id} className={`p-3 rounded-lg border group relative ${getCommentBorder(comment.type)}`}>
+                                    <div className="flex items-start gap-2">
+                                        <div className="mt-0.5 shrink-0">
+                                            {getCommentIcon(comment.type)}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm text-slate-300 pr-4">{comment.text}</p>
+                                            {/* Converted text-[10px] to text-[0.7rem] */}
+                                            <div className="text-[0.7rem] text-slate-500 mt-1 flex justify-between items-center">
+                                                <span className="uppercase font-bold opacity-60 mr-2">{comment.type || 'log'}</span>
+                                                <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                                            </div>
+                                        </div>
                                     </div>
+                                    <button 
+                                        onClick={() => handleDeleteComment(comment.id)}
+                                        className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-opacity absolute top-2 right-2 p-1"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
                                 </div>
                             ))
                         )}
                     </div>
 
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-                            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-indigo-500 outline-none"
-                            placeholder="Add a log entry..."
-                        />
-                        <button
-                            onClick={handleAddComment}
-                            disabled={!newComment.trim() || isPostingComment}
-                            className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors disabled:opacity-50"
-                        >
-                            <Send size={16} />
-                        </button>
+                    {/* New Comment Input Area */}
+                    <div className="flex flex-col gap-2">
+                        {/* Type Selectors */}
+                        <div className="flex gap-2 mb-1">
+                            {(['log', 'insight', 'blocker', 'win'] as CommentType[]).map(t => (
+                                <button
+                                    key={t}
+                                    onClick={() => setCommentType(t)}
+                                    // Converted text-[10px] to text-[0.7rem]
+                                    className={`px-2 py-1 rounded text-[0.7rem] uppercase font-bold border transition-all flex items-center gap-1 ${
+                                        commentType === t 
+                                        ? 'bg-slate-700 text-white border-slate-500 ring-1 ring-slate-400' 
+                                        : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-600'
+                                    }`}
+                                >
+                                    {getCommentIcon(t)}
+                                    {t}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-1 focus:ring-indigo-500 outline-none placeholder:text-slate-600"
+                                placeholder={`Add a ${commentType}...`}
+                            />
+                            <button
+                                onClick={handleAddComment}
+                                disabled={!newComment.trim() || isPostingComment}
+                                className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                <Send size={16} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

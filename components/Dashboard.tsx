@@ -6,7 +6,7 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2 } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2, Brain, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
@@ -41,6 +41,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     
     // View State
     const [isGridView, setIsGridView] = useState(false);
+    const [zoomLevel, setZoomLevel] = useState(100);
 
     // Persistent Assistant State
     const [showAssistant, setShowAssistant] = useState(false);
@@ -64,6 +65,17 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     useEffect(() => {
         loadGoals();
     }, []);
+
+    // Apply Zoom Level to Root
+    useEffect(() => {
+        // Tailwind uses rems. Changing root font-size scales the whole UI.
+        // Default browser font-size is 16px (100%).
+        document.documentElement.style.fontSize = `${zoomLevel}%`;
+    }, [zoomLevel]);
+
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 10, 150));
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 10, 80));
+    const handleZoomReset = () => setZoomLevel(100);
 
     // Collapsed State
     const [collapsedGoals, setCollapsedGoals] = useState<Set<string>>(new Set());
@@ -354,13 +366,41 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 </div>
 
                 <div className="lg:col-span-8 xl:col-span-9 space-y-6">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                          <div className="flex items-center gap-4">
                              <h2 className="text-xl font-bold text-white">Active Protocols</h2>
                              <div className="text-slate-500 text-sm border-l border-slate-800 pl-4">{goals.length} {goals.length === 1 ? 'Protocol' : 'Protocols'} Running</div>
                          </div>
                          
-                         <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2 flex-wrap">
+                             {/* Zoom Controls */}
+                             <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 items-center">
+                                 <button 
+                                     onClick={handleZoomOut}
+                                     className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-md transition"
+                                     title="Zoom Out"
+                                 >
+                                     <ZoomOut size={14} />
+                                 </button>
+                                 <span className="text-[10px] w-8 text-center text-slate-400 font-mono">{zoomLevel}%</span>
+                                 <button 
+                                     onClick={handleZoomIn}
+                                     className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-md transition"
+                                     title="Zoom In"
+                                 >
+                                     <ZoomIn size={14} />
+                                 </button>
+                                 <button 
+                                     onClick={handleZoomReset}
+                                     className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-md transition ml-1 border-l border-slate-700"
+                                     title="Reset Zoom"
+                                 >
+                                     <RotateCcw size={12} />
+                                 </button>
+                             </div>
+
+                             <div className="w-px h-6 bg-slate-800 mx-1 hidden sm:block"></div>
+
                              {/* Batch Actions */}
                              <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
                                  <button 
@@ -379,7 +419,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                  </button>
                              </div>
 
-                             <div className="w-px h-6 bg-slate-800 mx-1"></div>
+                             <div className="w-px h-6 bg-slate-800 mx-1 hidden sm:block"></div>
 
                              {/* View Mode Toggle */}
                              <button 
@@ -530,6 +570,28 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
                                         {!isCollapsed && !isEditing && (
                                             <div className="mt-6 space-y-4 animate-in fade-in duration-300">
+                                                {/* Saved AI Assessment Display */}
+                                                {goal.aiAssessment && (
+                                                    <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl p-4 mb-4">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <Brain size={14} className="text-indigo-400" />
+                                                            <h5 className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Neural Analysis Log</h5>
+                                                            <span className="text-[10px] text-slate-600 ml-auto">
+                                                                {new Date(goal.aiAssessment.timestamp).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-slate-400 mb-2 italic">"{goal.aiAssessment.reasoning}"</p>
+                                                        <div className="flex items-center gap-3 text-xs">
+                                                            <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-300">
+                                                                Est. Difficulty: {goal.aiAssessment.estimatedRating}/10
+                                                            </span>
+                                                            <span className="text-indigo-400/80">
+                                                                Suggestion: {goal.aiAssessment.suggestion}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {goal.milestones.length === 0 ? (
                                                     <p className="text-slate-600 italic text-sm">No milestones defined yet. Break this goal down.</p>
                                                 ) : (
