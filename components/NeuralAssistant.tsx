@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import { X, Send, Bot, User, Loader2, Sparkles, Copy, Check, Trash2, Zap } from 'lucide-react';
+import { getCurrentUser } from '../services/auth';
 
 interface Props {
     isOpen: boolean;
@@ -39,6 +40,25 @@ const NeuralAssistant: React.FC<Props> = ({ isOpen, onClose, contextData }) => {
         if (!chatSession && process.env.API_KEY) {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
+            const currentUser = getCurrentUser();
+            let userContext = '';
+            
+            if (currentUser?.profile) {
+                const { age, gender, occupation, goals, challenges, bio } = currentUser.profile;
+                userContext = `
+                
+                USER CONTEXT:
+                ${age ? `- Age: ${age}` : ''}
+                ${gender ? `- Gender: ${gender}` : ''}
+                ${occupation ? `- Occupation: ${occupation}` : ''}
+                ${goals ? `- Life Goals: ${goals}` : ''}
+                ${challenges ? `- Current Challenges: ${challenges}` : ''}
+                ${bio ? `- Additional Context: ${bio}` : ''}
+                
+                Use this context to provide personalized, relevant advice.
+                `;
+            }
+            
             const systemPrompt = `
                 You are the "Neural Assistant," a specialized neuroscience-based goal achievement coach for the GPA platform.
                 
@@ -48,11 +68,12 @@ const NeuralAssistant: React.FC<Props> = ({ isOpen, onClose, contextData }) => {
                 - Goldilocks Rule: Challenges must be difficulty 6-8.
                 - Go/No-Go: Every milestone needs actions to take and actions to avoid.
                 - RPE: Dopamine works on prediction errors; unpredictable rewards are best.
-
+                ${userContext}
                 Guidelines:
                 1. Be concise and punchy.
                 2. Use neuro-terminology (autonomic arousal, cortisol, friction, dopamine).
                 3. Strictly output PLAIN TEXT. No Markdown. No bold. No bullet points with *. Use dashes (-) if needed.
+                4. Tailor advice to the user's specific situation based on their profile context.
             `;
 
             const chat = ai.chats.create({

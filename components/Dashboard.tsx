@@ -12,6 +12,7 @@ import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
 import ScheduleGenerator from './ScheduleGenerator';
 import GoalAuditModal from './GoalAuditModal';
+import UserProfileModal from './UserProfileModal';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -25,6 +26,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [showAmygdala, setShowAmygdala] = useState(false);
     const [showSchedule, setShowSchedule] = useState(false);
     const [showAudit, setShowAudit] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
     const [rewardMessage, setRewardMessage] = useState<string | null>(null);
     const currentUser = getCurrentUser();
 
@@ -36,6 +38,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState('');
     const [editDescription, setEditDescription] = useState('');
+    const [editAIReasoning, setEditAIReasoning] = useState('');
+    const [editAISuggestion, setEditAISuggestion] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isPolishing, setIsPolishing] = useState(false);
     
@@ -178,6 +182,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditingGoalId(goal.id);
         setEditTitle(goal.title);
         setEditDescription(goal.description);
+        setEditAIReasoning(goal.aiAssessment?.reasoning || '');
+        setEditAISuggestion(goal.aiAssessment?.suggestion || '');
         // Automatically sync assistant context if it's already open
         if (showAssistant) {
             setAssistantContext({ title: goal.title, description: goal.description, mode: 'edition' });
@@ -188,6 +194,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditingGoalId(null);
         setEditTitle('');
         setEditDescription('');
+        setEditAIReasoning('');
+        setEditAISuggestion('');
         setIsPolishing(false);
         setAssistantContext(prev => ({ ...prev, mode: 'idle' }));
     };
@@ -247,7 +255,24 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         
         setIsSaving(true);
         try {
-            await updateGoal(id, { title: editTitle, description: editDescription });
+            const goals = await getGoals();
+            const currentGoal = goals.find(g => g.id === id);
+            
+            // Prepare the AI assessment update if it exists
+            let updatedAIAssessment = currentGoal?.aiAssessment;
+            if (updatedAIAssessment && (editAIReasoning || editAISuggestion)) {
+                updatedAIAssessment = {
+                    ...updatedAIAssessment,
+                    reasoning: editAIReasoning,
+                    suggestion: editAISuggestion
+                };
+            }
+            
+            await updateGoal(id, { 
+                title: editTitle, 
+                description: editDescription,
+                aiAssessment: updatedAIAssessment
+            });
             await loadGoals();
             cancelEditing();
         } catch (e) {
@@ -295,6 +320,20 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 <GoalAuditModal goals={goals} onClose={() => setShowAudit(false)} />
             )}
 
+            {showProfile && (
+                <UserProfileModal 
+                    isOpen={showProfile} 
+                    onClose={() => setShowProfile(false)}
+                    onUpdate={() => {
+                        // Force re-render to update any profile-dependent UI
+                        const user = getCurrentUser();
+                        if (user) {
+                            setShowProfile(false);
+                        }
+                    }}
+                />
+            )}
+
             {rewardMessage && (
                 <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
                     <div className={`px-6 py-4 rounded-xl font-bold shadow-2xl border ${rewardMessage.includes('JACKPOT') ? 'bg-yellow-500 text-black border-yellow-300' : 'bg-indigo-600 text-white border-indigo-400'}`}>
@@ -336,9 +375,24 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                             </div>
                             
                             {currentUser && (
-                                <div className="mt-4 flex items-center gap-2 text-xs font-mono text-indigo-300 bg-indigo-950/30 p-2 px-3 rounded-full w-fit border border-indigo-900/50">
-                                    <UserIcon size={12} />
-                                    <span>SUBJ: {currentUser.username}</span>
+                                <div className="mt-4 flex items-center justify-between gap-2 bg-indigo-950/30 p-3 rounded-lg border border-indigo-900/50">
+                                    <div className="flex items-center gap-2">
+                                        <UserIcon size={14} className="text-indigo-400" />
+                                        <div className="text-xs font-mono">
+                                            <span className="text-slate-500">SUBJ:</span>{' '}
+                                            <span className="text-indigo-300">{currentUser.username}</span>
+                                            {currentUser.profile?.age && (
+                                                <span className="text-slate-600 ml-2">• {currentUser.profile.age}y</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowProfile(true)}
+                                        className="text-slate-500 hover:text-indigo-400 transition-colors p-1"
+                                        title="Edit Profile"
+                                    >
+                                        <Edit2 size={14} />
+                                    </button>
                                 </div>
                             )}
                         </header>
@@ -495,25 +549,83 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <input 
-                                                        value={editTitle}
-                                                        onChange={e => {
-                                                            setEditTitle(e.target.value);
-                                                            if (showAssistant) setAssistantContext(prev => ({ ...prev, title: e.target.value }));
-                                                        }}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white font-bold text-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                        placeholder="Goal Title"
-                                                        autoFocus
-                                                    />
-                                                    <textarea 
-                                                        value={editDescription}
-                                                        onChange={e => {
-                                                            setEditDescription(e.target.value);
-                                                            if (showAssistant) setAssistantContext(prev => ({ ...prev, description: e.target.value }));
-                                                        }}
-                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24"
-                                                        placeholder="Description"
-                                                    />
+                                                    <div>
+                                                        <label className="text-xs text-indigo-300 font-bold uppercase mb-2 block">Goal Title</label>
+                                                        <input 
+                                                            value={editTitle}
+                                                            onChange={e => {
+                                                                setEditTitle(e.target.value);
+                                                                if (showAssistant) setAssistantContext(prev => ({ ...prev, title: e.target.value }));
+                                                            }}
+                                                            className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-3 text-white font-bold text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                                            placeholder="Goal Title"
+                                                            autoFocus
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs text-indigo-300 font-bold uppercase mb-2 block">Description / Why This Matters</label>
+                                                        <textarea 
+                                                            value={editDescription}
+                                                            onChange={e => {
+                                                                setEditDescription(e.target.value);
+                                                                if (showAssistant) setAssistantContext(prev => ({ ...prev, description: e.target.value }));
+                                                            }}
+                                                            className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-4 text-white text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y min-h-[120px]"
+                                                            placeholder="Explain why this goal is important to you..."
+                                                            rows={5}
+                                                        />
+                                                    </div>
+                                                    
+                                                    {/* AI Assessment in Edit Mode (Editable) */}
+                                                    {goal.aiAssessment && (
+                                                        <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl p-4">
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <Brain size={14} className="text-indigo-400" />
+                                                                <h5 className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Neural Analysis Log</h5>
+                                                                <span className="text-[10px] text-slate-600 ml-auto">
+                                                                    {new Date(goal.aiAssessment.timestamp).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="space-y-3">
+                                                                <div>
+                                                                    <label className="text-xs text-slate-500 uppercase font-bold block mb-1">AI Reasoning:</label>
+                                                                    <textarea
+                                                                        value={editAIReasoning}
+                                                                        onChange={(e) => setEditAIReasoning(e.target.value)}
+                                                                        className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-3 text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y min-h-[80px]"
+                                                                        placeholder="AI's reasoning about this goal..."
+                                                                        rows={3}
+                                                                    />
+                                                                </div>
+                                                                <div className="flex items-center gap-3 text-xs">
+                                                                    <span className="bg-slate-800 px-2 py-1 rounded text-slate-300">
+                                                                        Est. Difficulty: {goal.aiAssessment.estimatedRating}/10
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-xs text-slate-500 uppercase font-bold block mb-1">AI Suggestion:</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editAISuggestion}
+                                                                        onChange={(e) => setEditAISuggestion(e.target.value)}
+                                                                        className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-3 text-indigo-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                                                        placeholder="AI's suggestion..."
+                                                                    />
+                                                                </div>
+                                                                {goal.aiAssessment.alternativeActions && goal.aiAssessment.alternativeActions.length > 0 && (
+                                                                    <div className="pt-2 border-t border-indigo-500/20">
+                                                                        <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block mb-1">Suggested Starting Points:</span>
+                                                                        <ul className="list-disc list-inside text-xs text-slate-400 space-y-0.5">
+                                                                            {goal.aiAssessment.alternativeActions.map((action, i) => (
+                                                                                <li key={i}>{action}</li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
                                                     <div className="flex gap-2 flex-wrap pt-2">
                                                         <button onClick={() => saveEdit(goal.id)} disabled={isSaving} className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm font-bold text-white transition-colors shadow-lg shadow-green-900/20">
                                                             <Save size={16} /> Save Changes
@@ -538,7 +650,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                                 </span>
                                                             )}
                                                         </h3>
-                                                        <button onClick={() => startEditing(goal)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-indigo-400 transition-opacity p-1" title="Edit Goal">
+                                                        <button onClick={() => startEditing(goal)} className="text-slate-500 hover:text-indigo-400 transition-colors p-1.5 hover:bg-slate-800 rounded-lg" title="Edit Goal">
                                                             <Edit2 size={16} />
                                                         </button>
                                                     </div>

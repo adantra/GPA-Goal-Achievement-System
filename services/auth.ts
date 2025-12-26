@@ -1,10 +1,20 @@
 import { Goal, DifficultyRating, RewardType, ActionType, Milestone } from '../types';
 
+export interface UserProfile {
+    age?: number;
+    gender?: string;
+    occupation?: string;
+    goals?: string; // General life goals/aspirations
+    challenges?: string; // Current challenges or struggles
+    bio?: string; // Additional context
+}
+
 export interface User {
     id: string;
     username: string;
     // In a real app, never store passwords in plain text!
-    password: string; 
+    password: string;
+    profile?: UserProfile;
 }
 
 const USERS_KEY = 'gpa_users';
@@ -271,6 +281,31 @@ export const loginAsDemo = async (): Promise<User> => {
     localStorage.setItem(`gpa_data_${demoUser.id}_amygdala`, "If I continue to drift, I will wake up in five years to a stranger in the mirror—softer, slower, and filled with the quiet desperation of unfulfilled potential. The comfort I seek now is the architect of my future misery.");
 
     return demoUser;
+};
+
+export const updateUserProfile = async (profile: UserProfile): Promise<User> => {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+        throw new Error("No user logged in");
+    }
+    
+    // Update user in users list
+    const usersStr = localStorage.getItem(USERS_KEY);
+    const users: User[] = usersStr ? JSON.parse(usersStr) : [];
+    const userIndex = users.findIndex(u => u.id === currentUser.id);
+    
+    if (userIndex !== -1) {
+        users[userIndex].profile = profile;
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+    
+    // Update session
+    const updatedUser = { ...currentUser, profile };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+    
+    return updatedUser;
 };
 
 export const logout = () => {
