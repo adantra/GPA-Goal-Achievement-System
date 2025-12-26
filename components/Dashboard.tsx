@@ -364,33 +364,199 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
                     {/* Focused Goal Card */}
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 shadow-2xl">
-                        <div className="mb-8">
-                            <div className="flex items-center gap-4 mb-4">
-                                <h2 className="text-5xl font-bold text-white leading-tight">{focusedGoal.title}</h2>
-                                {focusedGoal.status === 'completed' && (
-                                    <span className="flex items-center gap-2 text-sm bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20">
-                                        <CheckCircle size={16} /> COMPLETED
-                                    </span>
+                        {editingGoalId === focusedGoal.id ? (
+                            /* Edit Mode in Focus */
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xl text-indigo-400 font-bold uppercase">Editing Protocol</span>
+                                        <button 
+                                            onClick={() => openAssistant(editTitle, editDescription, 'edition')}
+                                            className="text-base flex items-center gap-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-3 py-2 rounded-lg border border-indigo-500/30 transition-colors"
+                                        >
+                                            <Bot size={16} /> Neural Assistant
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="relative group">
+                                        <button 
+                                            onClick={handleAIPolish}
+                                            disabled={isPolishing}
+                                            className="text-base flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-4 py-2 rounded-lg shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 border border-white/10"
+                                        >
+                                            {isPolishing ? (
+                                                <>
+                                                    <Loader2 size={16} className="animate-spin" />
+                                                    Optimizing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles size={16} />
+                                                    AI Polish
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-base text-indigo-300 font-bold uppercase mb-2 block">Goal Title</label>
+                                    <input 
+                                        value={editTitle}
+                                        onChange={e => {
+                                            setEditTitle(e.target.value);
+                                            if (showAssistant) setAssistantContext(prev => ({ ...prev, title: e.target.value }));
+                                        }}
+                                        className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-4 text-white font-bold text-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                        placeholder="Goal Title"
+                                        autoFocus
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label className="text-base text-indigo-300 font-bold uppercase mb-2 block">Description / Why This Matters</label>
+                                    <textarea 
+                                        value={editDescription}
+                                        onChange={e => {
+                                            setEditDescription(e.target.value);
+                                            if (showAssistant) setAssistantContext(prev => ({ ...prev, description: e.target.value }));
+                                        }}
+                                        className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-4 text-white text-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y min-h-[150px]"
+                                        placeholder="Explain why this goal is important to you..."
+                                        rows={6}
+                                    />
+                                </div>
+
+                                {/* AI Assessment Editing in Focus Mode */}
+                                {focusedGoal.aiAssessment && (
+                                    <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl p-6">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <Brain size={18} className="text-indigo-400" />
+                                            <h5 className="text-base font-bold text-indigo-300 uppercase tracking-wider">Neural Analysis Log</h5>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-sm text-slate-500 uppercase font-bold block mb-2">AI Reasoning:</label>
+                                                <textarea
+                                                    value={editAIReasoning}
+                                                    onChange={(e) => setEditAIReasoning(e.target.value)}
+                                                    className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-3 text-slate-300 text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y min-h-[100px]"
+                                                    placeholder="AI's reasoning about this goal..."
+                                                    rows={4}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-3 text-sm">
+                                                <span className="bg-slate-800 px-3 py-1.5 rounded text-slate-300">
+                                                    Est. Difficulty: {focusedGoal.aiAssessment.estimatedRating}/10
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <label className="text-sm text-slate-500 uppercase font-bold block mb-2">AI Suggestion:</label>
+                                                <input
+                                                    type="text"
+                                                    value={editAISuggestion}
+                                                    onChange={(e) => setEditAISuggestion(e.target.value)}
+                                                    className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-3 text-indigo-300 text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                                    placeholder="AI's suggestion..."
+                                                />
+                                            </div>
+                                            
+                                            {/* Editable Alternative Actions */}
+                                            <div className="pt-3 border-t border-indigo-500/20">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <span className="text-sm text-indigo-400 font-bold uppercase tracking-wider">Suggested Starting Points:</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditAlternativeActions([...editAlternativeActions, ''])}
+                                                        className="text-sm flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded border border-indigo-500/30 transition-colors"
+                                                    >
+                                                        <Plus size={12} />
+                                                        Add Action
+                                                    </button>
+                                                </div>
+                                                {editAlternativeActions.length === 0 ? (
+                                                    <p className="text-sm text-slate-600 italic">No starting points defined. Click "Add Action" to create one.</p>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {editAlternativeActions.map((action, i) => (
+                                                            <div key={i} className="flex gap-2 items-center">
+                                                                <span className="text-slate-500 text-sm shrink-0">{i + 1}.</span>
+                                                                <input
+                                                                    type="text"
+                                                                    value={action}
+                                                                    onChange={(e) => {
+                                                                        const updated = [...editAlternativeActions];
+                                                                        updated[i] = e.target.value;
+                                                                        setEditAlternativeActions(updated);
+                                                                    }}
+                                                                    className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                                    placeholder="Enter starting action..."
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setEditAlternativeActions(editAlternativeActions.filter((_, idx) => idx !== i))}
+                                                                    className="text-red-400 hover:text-red-300 p-1 transition-colors"
+                                                                    title="Remove"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
-                            </div>
-                            <p className="text-slate-300 text-xl leading-relaxed whitespace-pre-wrap">{focusedGoal.description}</p>
-                        </div>
 
-                        {/* Progress Bar */}
-                        {totalMilestones > 0 && (
-                            <div className="mb-8">
-                                <div className="flex justify-between items-center mb-3">
-                                    <span className="text-lg font-medium text-slate-400">Progress</span>
-                                    <span className="text-lg font-bold text-indigo-400">{completedMilestones}/{totalMilestones} Milestones ({progress}%)</span>
-                                </div>
-                                <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden">
-                                    <div className={`h-full transition-all duration-500 ${focusedGoal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }}></div>
+                                <div className="flex gap-3 flex-wrap pt-4">
+                                    <button onClick={() => saveEdit(focusedGoal.id)} disabled={isSaving} className="flex items-center gap-2 bg-green-600 hover:bg-green-500 px-6 py-3 rounded-lg text-lg font-bold text-white transition-colors shadow-lg shadow-green-900/20">
+                                        <Save size={20} /> Save Changes
+                                    </button>
+                                    <button onClick={cancelEditing} disabled={isSaving} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3 rounded-lg text-lg font-medium text-slate-300 hover:text-white transition-colors">
+                                        <X size={20} /> Discard
+                                    </button>
+                                    <div className="flex-1"></div>
+                                    <button onClick={() => handleDeleteGoal(focusedGoal.id)} disabled={isSaving} className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-3 rounded-lg text-base font-bold transition-colors border border-red-500/20">
+                                        <Trash2 size={18} /> Delete
+                                    </button>
                                 </div>
                             </div>
-                        )}
+                        ) : (
+                            /* View Mode in Focus */
+                            <>
+                                <div className="mb-8">
+                                    <div className="flex items-center justify-between gap-4 mb-4">
+                                        <div className="flex items-center gap-4">
+                                            <h2 className="text-5xl font-bold text-white leading-tight">{focusedGoal.title}</h2>
+                                            {focusedGoal.status === 'completed' && (
+                                                <span className="flex items-center gap-2 text-sm bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20">
+                                                    <CheckCircle size={16} /> COMPLETED
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button onClick={() => startEditing(focusedGoal)} className="text-slate-400 hover:text-indigo-400 transition-colors p-2 hover:bg-slate-800 rounded-lg" title="Edit Goal">
+                                            <Edit2 size={24} />
+                                        </button>
+                                    </div>
+                                    <p className="text-slate-300 text-xl leading-relaxed whitespace-pre-wrap">{focusedGoal.description}</p>
+                                </div>
 
-                        {/* AI Assessment */}
-                        {focusedGoal.aiAssessment && (
+                                {/* Progress Bar */}
+                                {totalMilestones > 0 && (
+                                    <div className="mb-8">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-lg font-medium text-slate-400">Progress</span>
+                                            <span className="text-lg font-bold text-indigo-400">{completedMilestones}/{totalMilestones} Milestones ({progress}%)</span>
+                                        </div>
+                                        <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden">
+                                            <div className={`h-full transition-all duration-500 ${focusedGoal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }}></div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* AI Assessment */}
+                                {focusedGoal.aiAssessment && (
                             <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl p-6 mb-8">
                                 <div className="flex items-center gap-3 mb-3">
                                     <Brain size={18} className="text-indigo-400" />
@@ -452,6 +618,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                 onMilestoneCreated={loadGoals} 
                             />
                         </div>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
