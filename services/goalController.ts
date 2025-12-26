@@ -41,6 +41,7 @@ export const createGoal = async (data: Omit<Goal, 'id' | 'status' | 'milestones'
         title: data.title,
         description: data.description,
         difficultyRating: data.difficultyRating,
+        estimatedTimeframe: data.estimatedTimeframe,
         status: 'active',
         milestones: [],
         aiAssessment: data.aiAssessment

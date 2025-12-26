@@ -37,6 +37,8 @@ export interface AIAssessment {
   reasoning: string;
   suggestion: string;
   alternativeActions?: string[];
+  estimatedTimeframe?: string; // e.g., "3-6 months", "2 weeks", "1 year"
+  timeframeReasoning?: string; // Why this timeframe is realistic
   timestamp: string;
 }
 
@@ -56,6 +58,7 @@ export interface Goal {
   title: string;
   description: string;
   difficultyRating: number;
+  estimatedTimeframe?: string; // User-defined or AI-suggested timeframe
   status: 'active' | 'completed' | 'archived';
   milestones: Milestone[];
   aiAssessment?: AIAssessment;

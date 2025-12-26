@@ -659,8 +659,16 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                             )}
 
                                             <div className="flex flex-col items-end gap-3 ml-4">
-                                                <div className="bg-slate-800 px-3 py-1 rounded-full text-xs font-mono text-indigo-400 whitespace-nowrap border border-slate-700">
-                                                    Diff: {goal.difficultyRating}/10
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="bg-slate-800 px-3 py-1 rounded-full text-xs font-mono text-indigo-400 whitespace-nowrap border border-slate-700">
+                                                        Diff: {goal.difficultyRating}/10
+                                                    </div>
+                                                    {goal.estimatedTimeframe && (
+                                                        <div className="bg-emerald-900/20 px-3 py-1 rounded-full text-xs font-mono text-emerald-400 whitespace-nowrap border border-emerald-500/30 flex items-center gap-1">
+                                                            <CalendarClock size={12} />
+                                                            {goal.estimatedTimeframe}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <button onClick={() => toggleGoal(goal.id)} className="p-1 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
                                                     {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
@@ -693,15 +701,24 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                             </span>
                                                         </div>
                                                         <p className="text-sm text-slate-400 mb-2 italic">"{goal.aiAssessment.reasoning}"</p>
-                                                        <div className="flex items-center gap-3 text-xs mb-3">
+                                                        <div className="flex items-center gap-3 text-xs mb-3 flex-wrap">
                                                             <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-300">
                                                                 Est. Difficulty: {goal.aiAssessment.estimatedRating}/10
                                                             </span>
+                                                            {goal.aiAssessment.estimatedTimeframe && (
+                                                                <span className="bg-emerald-900/20 px-2 py-0.5 rounded text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                                                    <CalendarClock size={12} />
+                                                                    Est. Time: {goal.aiAssessment.estimatedTimeframe}
+                                                                </span>
+                                                            )}
                                                             <span className="text-indigo-400/80">
                                                                 Suggestion: {goal.aiAssessment.suggestion}
                                                             </span>
                                                         </div>
                                                         
+                                                        {goal.aiAssessment.timeframeReasoning && (
+                                                            <p className="text-xs text-slate-500 mb-3 italic">⏱️ {goal.aiAssessment.timeframeReasoning}</p>
+                                                        )}
                                                         {goal.aiAssessment.alternativeActions && goal.aiAssessment.alternativeActions.length > 0 && (
                                                             <div className="mt-2 pt-2 border-t border-indigo-500/20">
                                                                 <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block mb-1">Suggested Starting Points:</span>

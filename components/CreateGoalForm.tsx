@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createGoal } from '../services/goalController';
-import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot, Zap, ArrowRight, Target, Minimize2, Info, Brain } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, Sparkles, Bot, Zap, ArrowRight, Target, Minimize2, Info, Brain, CalendarClock } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -29,6 +29,8 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
         reasoning: string; 
         suggestion: string;
         alternativeActions?: string[];
+        estimatedTimeframe?: string;
+        timeframeReasoning?: string;
     } | null>(null);
 
     // Expansion State
@@ -88,6 +90,8 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                    - If rating > 8, suggest "Reducing Scope" (breaking it down).
                    - If 6-8, suggest a minor tweak for clarity.
                 4. alternative_actions: A list of 3 concrete, immediate micro-actions or starting points the user could take to begin this goal.
+                5. estimated_timeframe: Realistic timeframe to complete this goal (e.g., "2-3 weeks", "6 months", "1-2 years")
+                6. timeframe_reasoning: Brief explanation of why this timeframe is realistic
             `;
 
             const response = await ai.models.generateContent({
@@ -104,9 +108,11 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                             alternative_actions: { 
                                 type: Type.ARRAY,
                                 items: { type: Type.STRING }
-                            }
+                            },
+                            estimated_timeframe: { type: Type.STRING },
+                            timeframe_reasoning: { type: Type.STRING }
                         },
-                        required: ["estimated_rating", "reasoning", "suggestion", "alternative_actions"]
+                        required: ["estimated_rating", "reasoning", "suggestion", "alternative_actions", "estimated_timeframe", "timeframe_reasoning"]
                     }
                 }
             });
@@ -117,7 +123,9 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                      rating: data.estimated_rating,
                      reasoning: data.reasoning,
                      suggestion: data.suggestion,
-                     alternativeActions: data.alternative_actions
+                     alternativeActions: data.alternative_actions,
+                     estimatedTimeframe: data.estimated_timeframe,
+                     timeframeReasoning: data.timeframe_reasoning
                  });
                  // Optional: Auto-set difficulty if the user hasn't touched it much? 
                  // Better to let user apply it manually via the UI button provided.
@@ -277,12 +285,15 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                 title,
                 description,
                 difficultyRating: difficulty,
+                estimatedTimeframe: aiFeedback?.estimatedTimeframe,
                 // Persist AI Assessment if available, regardless of whether user followed it perfectly
                 aiAssessment: aiFeedback ? {
                     estimatedRating: aiFeedback.rating,
                     reasoning: aiFeedback.reasoning,
                     suggestion: aiFeedback.suggestion,
                     alternativeActions: aiFeedback.alternativeActions,
+                    estimatedTimeframe: aiFeedback.estimatedTimeframe,
+                    timeframeReasoning: aiFeedback.timeframeReasoning,
                     timestamp: new Date().toISOString()
                 } : undefined
             });
@@ -394,6 +405,21 @@ const CreateGoalForm: React.FC<Props> = ({ onGoalCreated, onOpenAssistant }) => 
                                 )}
                             </div>
                             <p className="text-slate-300 text-sm mb-2">{aiFeedback.reasoning}</p>
+                            
+                            {/* Estimated Timeframe */}
+                            {aiFeedback.estimatedTimeframe && (
+                                <div className="mb-2 p-3 bg-slate-950/50 rounded-lg border border-slate-700">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <CalendarClock size={14} className="text-emerald-400" />
+                                        <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Estimated Timeframe</span>
+                                    </div>
+                                    <p className="text-white font-semibold text-base mb-1">{aiFeedback.estimatedTimeframe}</p>
+                                    {aiFeedback.timeframeReasoning && (
+                                        <p className="text-slate-400 text-xs italic">{aiFeedback.timeframeReasoning}</p>
+                                    )}
+                                </div>
+                            )}
+                            
                             <div className="text-slate-400 text-xs italic border-l-2 border-indigo-500/30 pl-3 mb-2">
                                 "Suggestion: {aiFeedback.suggestion}"
                             </div>
