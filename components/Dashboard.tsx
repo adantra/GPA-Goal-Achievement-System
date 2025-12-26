@@ -42,8 +42,10 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [editAIReasoning, setEditAIReasoning] = useState('');
     const [editAISuggestion, setEditAISuggestion] = useState('');
     const [editAlternativeActions, setEditAlternativeActions] = useState<string[]>([]);
+    const [editTimeframe, setEditTimeframe] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isPolishing, setIsPolishing] = useState(false);
+    const [isEstimatingTimeframe, setIsEstimatingTimeframe] = useState(false);
     
     // View State
     const [isGridView, setIsGridView] = useState(false);
@@ -187,6 +189,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditAIReasoning(goal.aiAssessment?.reasoning || '');
         setEditAISuggestion(goal.aiAssessment?.suggestion || '');
         setEditAlternativeActions(goal.aiAssessment?.alternativeActions || []);
+        setEditTimeframe(goal.estimatedTimeframe || '');
         // Automatically sync assistant context if it's already open
         if (showAssistant) {
             setAssistantContext({ title: goal.title, description: goal.description, mode: 'edition' });
@@ -200,6 +203,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditAIReasoning('');
         setEditAISuggestion('');
         setEditAlternativeActions([]);
+        setEditTimeframe('');
         setIsPolishing(false);
         setAssistantContext(prev => ({ ...prev, mode: 'idle' }));
     };
@@ -257,6 +261,64 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         }
     };
 
+    const handleEstimateTimeframe = async () => {
+        if (!process.env.API_KEY) {
+            alert("API Key missing");
+            return;
+        }
+        if (!editTitle && !editDescription) return;
+
+        setIsEstimatingTimeframe(true);
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const prompt = `
+                You are a goal planning expert. Estimate a realistic timeframe for achieving this goal.
+                
+                Goal Title: "${editTitle}"
+                Goal Description: "${editDescription}"
+                ${editAIReasoning ? `AI Analysis: "${editAIReasoning}"` : ''}
+                
+                Consider:
+                1. The complexity and scope of the goal
+                2. Typical time needed for similar achievements
+                3. Realistic expectations accounting for part-time effort
+                4. Buffer time for obstacles and learning curves
+                
+                Provide a timeframe estimate (e.g., "2-3 weeks", "6 months", "1-2 years").
+                Be realistic and specific. Output ONLY the JSON with no additional text.
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-flash-lite-latest',
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            timeframe: { type: Type.STRING }
+                        },
+                        required: ["timeframe"]
+                    }
+                }
+            });
+
+            const text = response.text?.trim();
+            if (text) {
+                const data = JSON.parse(text);
+                if (data.timeframe) {
+                    setEditTimeframe(data.timeframe);
+                }
+            }
+
+        } catch (e) {
+            console.error("AI Timeframe estimation failed", e);
+            alert("Failed to estimate timeframe. Please try again.");
+        } finally {
+            setIsEstimatingTimeframe(false);
+        }
+    };
+
     const saveEdit = async (id: string) => {
         if (!editTitle.trim() || !editDescription.trim()) return;
         
@@ -279,7 +341,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
             await updateGoal(id, { 
                 title: editTitle, 
                 description: editDescription,
-                aiAssessment: updatedAIAssessment
+                aiAssessment: updatedAIAssessment,
+                estimatedTimeframe: editTimeframe || undefined
             });
             await loadGoals();
             cancelEditing();
@@ -425,6 +488,38 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                         placeholder="Explain why this goal is important to you..."
                                         rows={6}
                                     />
+                                </div>
+
+                                {/* Estimated Timeframe */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-base text-indigo-300 font-bold uppercase">Estimated Timeframe</label>
+                                        <button 
+                                            onClick={handleEstimateTimeframe}
+                                            disabled={isEstimatingTimeframe}
+                                            className="text-sm flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
+                                        >
+                                            {isEstimatingTimeframe ? (
+                                                <>
+                                                    <Loader2 size={14} className="animate-spin" />
+                                                    Estimating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <CalendarClock size={14} />
+                                                    AI Estimate
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                    <input 
+                                        type="text"
+                                        value={editTimeframe}
+                                        onChange={e => setEditTimeframe(e.target.value)}
+                                        className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-3 text-white text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                        placeholder="e.g., 2-3 weeks, 6 months, 1 year..."
+                                    />
+                                    <p className="text-sm text-slate-500 mt-1 italic">How long do you think this goal will take?</p>
                                 </div>
 
                                 {/* AI Assessment Editing in Focus Mode */}
@@ -899,6 +994,38 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                             placeholder="Explain why this goal is important to you..."
                                                             rows={5}
                                                         />
+                                                    </div>
+
+                                                    {/* Estimated Timeframe */}
+                                                    <div>
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <label className="text-xs text-indigo-300 font-bold uppercase">Estimated Timeframe</label>
+                                                            <button 
+                                                                onClick={handleEstimateTimeframe}
+                                                                disabled={isEstimatingTimeframe}
+                                                                className="text-xs flex items-center gap-1 bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                                            >
+                                                                {isEstimatingTimeframe ? (
+                                                                    <>
+                                                                        <Loader2 size={12} className="animate-spin" />
+                                                                        Estimating...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <CalendarClock size={12} />
+                                                                        AI Estimate
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                        <input 
+                                                            type="text"
+                                                            value={editTimeframe}
+                                                            onChange={e => setEditTimeframe(e.target.value)}
+                                                            className="w-full bg-slate-950 border-2 border-slate-700 rounded-lg p-2 text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                                                            placeholder="e.g., 2-3 weeks, 6 months, 1 year..."
+                                                        />
+                                                        <p className="text-xs text-slate-500 mt-1 italic">How long will this goal take?</p>
                                                     </div>
                                                     
                                                     {/* AI Assessment in Edit Mode (Editable) */}

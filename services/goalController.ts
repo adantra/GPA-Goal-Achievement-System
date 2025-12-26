@@ -55,9 +55,9 @@ export const createGoal = async (data: Omit<Goal, 'id' | 'status' | 'milestones'
 };
 
 /**
- * Updates an existing goal's title, description, or AI assessment.
+ * Updates an existing goal's title, description, AI assessment, or estimated timeframe.
  */
-export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'aiAssessment'>>): Promise<Goal> => {
+export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'aiAssessment' | 'estimatedTimeframe'>>): Promise<Goal> => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 400));
 
