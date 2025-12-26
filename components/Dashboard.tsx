@@ -6,7 +6,7 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2, Brain, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2, Brain, ZoomIn, ZoomOut, RotateCcw, Plus } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
@@ -40,6 +40,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [editDescription, setEditDescription] = useState('');
     const [editAIReasoning, setEditAIReasoning] = useState('');
     const [editAISuggestion, setEditAISuggestion] = useState('');
+    const [editAlternativeActions, setEditAlternativeActions] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isPolishing, setIsPolishing] = useState(false);
     
@@ -184,6 +185,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditDescription(goal.description);
         setEditAIReasoning(goal.aiAssessment?.reasoning || '');
         setEditAISuggestion(goal.aiAssessment?.suggestion || '');
+        setEditAlternativeActions(goal.aiAssessment?.alternativeActions || []);
         // Automatically sync assistant context if it's already open
         if (showAssistant) {
             setAssistantContext({ title: goal.title, description: goal.description, mode: 'edition' });
@@ -196,6 +198,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditDescription('');
         setEditAIReasoning('');
         setEditAISuggestion('');
+        setEditAlternativeActions([]);
         setIsPolishing(false);
         setAssistantContext(prev => ({ ...prev, mode: 'idle' }));
     };
@@ -211,14 +214,16 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const prompt = `
-                Optimize this goal protocol for maximum neuro-motivation.
-                Title: "${editTitle}"
-                Description: "${editDescription}"
-
-                1. Make the Title action-oriented and punchy.
-                2. Make the Description strictly explicitly clear about WHY this matters, using motivating language.
+                You are a goal optimization expert. Improve this goal for maximum motivation and clarity.
                 
-                Return JSON: { "title": string, "description": string }
+                Current Title: "${editTitle}"
+                Current Description: "${editDescription}"
+                
+                Requirements:
+                1. Make the title action-oriented, punchy, and under 80 characters
+                2. Make the description explicitly clear about WHY this goal matters
+                3. Use motivating, energizing language
+                4. Output ONLY the JSON with no additional text
             `;
 
             const response = await ai.models.generateContent({
@@ -231,7 +236,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                         properties: {
                             title: { type: Type.STRING },
                             description: { type: Type.STRING }
-                        }
+                        },
+                        required: ["title", "description"]
                     }
                 }
             });
@@ -260,11 +266,12 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
             
             // Prepare the AI assessment update if it exists
             let updatedAIAssessment = currentGoal?.aiAssessment;
-            if (updatedAIAssessment && (editAIReasoning || editAISuggestion)) {
+            if (updatedAIAssessment && (editAIReasoning || editAISuggestion || editAlternativeActions.length > 0)) {
                 updatedAIAssessment = {
                     ...updatedAIAssessment,
                     reasoning: editAIReasoning,
-                    suggestion: editAISuggestion
+                    suggestion: editAISuggestion,
+                    alternativeActions: editAlternativeActions.length > 0 ? editAlternativeActions : undefined
                 };
             }
             
@@ -612,16 +619,50 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                                         placeholder="AI's suggestion..."
                                                                     />
                                                                 </div>
-                                                                {goal.aiAssessment.alternativeActions && goal.aiAssessment.alternativeActions.length > 0 && (
-                                                                    <div className="pt-2 border-t border-indigo-500/20">
-                                                                        <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider block mb-1">Suggested Starting Points:</span>
-                                                                        <ul className="list-disc list-inside text-xs text-slate-400 space-y-0.5">
-                                                                            {goal.aiAssessment.alternativeActions.map((action, i) => (
-                                                                                <li key={i}>{action}</li>
-                                                                            ))}
-                                                                        </ul>
+                                                                {/* Editable Alternative Actions */}
+                                                                <div className="pt-2 border-t border-indigo-500/20">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Suggested Starting Points:</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setEditAlternativeActions([...editAlternativeActions, ''])}
+                                                                            className="text-[10px] flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded border border-indigo-500/30 transition-colors"
+                                                                        >
+                                                                            <Plus size={10} />
+                                                                            Add Action
+                                                                        </button>
                                                                     </div>
-                                                                )}
+                                                                    {editAlternativeActions.length === 0 ? (
+                                                                        <p className="text-xs text-slate-600 italic">No starting points defined. Click "Add Action" to create one.</p>
+                                                                    ) : (
+                                                                        <div className="space-y-2">
+                                                                            {editAlternativeActions.map((action, i) => (
+                                                                                <div key={i} className="flex gap-2 items-center">
+                                                                                    <span className="text-slate-500 text-xs shrink-0">{i + 1}.</span>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={action}
+                                                                                        onChange={(e) => {
+                                                                                            const updated = [...editAlternativeActions];
+                                                                                            updated[i] = e.target.value;
+                                                                                            setEditAlternativeActions(updated);
+                                                                                        }}
+                                                                                        className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                                                        placeholder="Enter starting action..."
+                                                                                    />
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setEditAlternativeActions(editAlternativeActions.filter((_, idx) => idx !== i))}
+                                                                                        className="text-red-400 hover:text-red-300 p-1 transition-colors"
+                                                                                        title="Remove"
+                                                                                    >
+                                                                                        <X size={14} />
+                                                                                    </button>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )}
