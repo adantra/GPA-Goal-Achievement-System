@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Goal } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
-import { X, PieChart, Loader2, Target, AlertTriangle, CheckCircle, Brain, Scale } from 'lucide-react';
+import { X, PieChart, Loader2, Target, AlertTriangle, CheckCircle, Brain, Scale, Lightbulb, Sparkles } from 'lucide-react';
 
 interface Props {
     goals: Goal[];
@@ -26,6 +26,8 @@ const GoalAuditModal: React.FC<Props> = ({ goals, onClose }) => {
     const [loading, setLoading] = useState(true);
     const [audit, setAudit] = useState<AuditResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [loadingSuggestions, setLoadingSuggestions] = useState<string | null>(null); // Track which category is loading
+    const [categorySuggestions, setCategorySuggestions] = useState<Record<string, string[]>>({}); // Store suggestions per category
 
     useEffect(() => {
         const generateAudit = async () => {
@@ -123,6 +125,78 @@ const GoalAuditModal: React.FC<Props> = ({ goals, onClose }) => {
         generateAudit();
     }, [goals]);
 
+    const generateSuggestions = async (category: CategoryBreakdown) => {
+        if (!process.env.API_KEY) {
+            alert("API Key missing.");
+            return;
+        }
+
+        setLoadingSuggestions(category.category);
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            
+            const activeGoals = goals.filter(g => g.status === 'active');
+            const goalsContext = activeGoals.map(g => 
+                `- "${g.title}" (Difficulty: ${g.difficultyRating}/10): ${g.description}`
+            ).join('\n');
+
+            const prompt = `
+                Act as a high-performance life architect and goal-setting coach.
+                
+                The user's current goals are:
+                ${goalsContext}
+                
+                The "${category.category}" life pillar is currently ${category.status} (${category.count} goals).
+                
+                ${category.status === 'deficient' ? 
+                    `This area is DEFICIENT. Provide 3-5 specific, actionable goal suggestions to strengthen this pillar. Make them concrete and compelling.` :
+                    `This area is EXCESSIVE. Provide 3-5 specific suggestions on how to consolidate, prioritize, or potentially remove/defer some goals to reduce cognitive load while maintaining progress.`
+                }
+                
+                Consider:
+                - Specific, measurable outcomes
+                - Realistic time commitments
+                - Synergy with existing goals
+                - Practical first steps
+                
+                For deficient areas, suggest NEW goals to add.
+                For excessive areas, suggest ways to consolidate or streamline EXISTING goals.
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-flash-lite-latest',
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            suggestions: {
+                                type: Type.ARRAY,
+                                items: { type: Type.STRING }
+                            }
+                        },
+                        required: ["suggestions"]
+                    }
+                }
+            });
+
+            if (response.text) {
+                const data = JSON.parse(response.text);
+                setCategorySuggestions(prev => ({
+                    ...prev,
+                    [category.category]: data.suggestions
+                }));
+            }
+        } catch (err: any) {
+            console.error(err);
+            alert("Failed to generate suggestions: " + err.message);
+        } finally {
+            setLoadingSuggestions(null);
+        }
+    };
+
     const getScoreColor = (score: number) => {
         if (score >= 80) return 'text-emerald-400 border-emerald-500';
         if (score >= 60) return 'text-yellow-400 border-yellow-500';
@@ -191,23 +265,70 @@ const GoalAuditModal: React.FC<Props> = ({ goals, onClose }) => {
                                 <h4 className="flex items-center gap-2 text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
                                     <Target size={16} /> Life Pillars Breakdown
                                 </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                <div className="space-y-4">
                                     {audit.categoryBreakdown.map((cat, idx) => (
-                                        <div key={idx} className={`p-4 rounded-xl border ${
-                                            cat.status === 'balanced' ? 'bg-emerald-900/10 border-emerald-500/30' : 
-                                            cat.status === 'deficient' ? 'bg-red-900/10 border-red-500/30' : 
-                                            'bg-yellow-900/10 border-yellow-500/30'
-                                        }`}>
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className="font-bold text-slate-200 text-sm">{cat.category}</span>
-                                                <span className="text-2xl font-black text-slate-500/50">{cat.count}</span>
-                                            </div>
-                                            <div className={`text-xs font-bold px-2 py-1 rounded inline-block uppercase tracking-wider ${
-                                                cat.status === 'balanced' ? 'text-emerald-400 bg-emerald-500/10' : 
-                                                cat.status === 'deficient' ? 'text-red-400 bg-red-500/10' : 
-                                                'text-yellow-400 bg-yellow-500/10'
+                                        <div key={idx}>
+                                            <div className={`p-4 rounded-xl border ${
+                                                cat.status === 'balanced' ? 'bg-emerald-900/10 border-emerald-500/30' : 
+                                                cat.status === 'deficient' ? 'bg-red-900/10 border-red-500/30' : 
+                                                'bg-yellow-900/10 border-yellow-500/30'
                                             }`}>
-                                                {cat.status}
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <span className="font-bold text-slate-200 text-base">{cat.category}</span>
+                                                            <span className="text-2xl font-black text-slate-500/50">{cat.count}</span>
+                                                            <div className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${
+                                                                cat.status === 'balanced' ? 'text-emerald-400 bg-emerald-500/10' : 
+                                                                cat.status === 'deficient' ? 'text-red-400 bg-red-500/10' : 
+                                                                'text-yellow-400 bg-yellow-500/10'
+                                                            }`}>
+                                                                {cat.status}
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {/* Suggestion Button for Deficient/Excessive */}
+                                                        {cat.status !== 'balanced' && !categorySuggestions[cat.category] && (
+                                                            <button
+                                                                onClick={() => generateSuggestions(cat)}
+                                                                disabled={loadingSuggestions === cat.category}
+                                                                className="flex items-center gap-2 text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 font-medium"
+                                                            >
+                                                                {loadingSuggestions === cat.category ? (
+                                                                    <>
+                                                                        <Loader2 size={12} className="animate-spin" />
+                                                                        Generating...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Lightbulb size={12} />
+                                                                        Get AI Suggestions
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Display Suggestions */}
+                                                {categorySuggestions[cat.category] && (
+                                                    <div className="mt-3 pt-3 border-t border-slate-700/50">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <Sparkles size={14} className="text-indigo-400" />
+                                                            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
+                                                                {cat.status === 'deficient' ? 'Suggested Goals to Add' : 'Suggestions to Optimize'}
+                                                            </span>
+                                                        </div>
+                                                        <ul className="space-y-2">
+                                                            {categorySuggestions[cat.category].map((suggestion, i) => (
+                                                                <li key={i} className="flex gap-2 text-slate-300 text-sm">
+                                                                    <span className="text-indigo-400 shrink-0">{i + 1}.</span>
+                                                                    <span>{suggestion}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
