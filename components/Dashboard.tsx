@@ -27,6 +27,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [showSchedule, setShowSchedule] = useState(false);
     const [showAudit, setShowAudit] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
+    const [focusedGoalId, setFocusedGoalId] = useState<string | null>(null);
     const [rewardMessage, setRewardMessage] = useState<string | null>(null);
     const currentUser = getCurrentUser();
 
@@ -306,6 +307,155 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
     if (showSpaceTime) {
         return <SpaceTimePlayer onClose={() => setShowSpaceTime(false)} />;
+    }
+
+    // Focus Mode - Show only one goal with maximum space
+    if (focusedGoalId) {
+        const focusedGoal = goals.find(g => g.id === focusedGoalId);
+        if (!focusedGoal) {
+            setFocusedGoalId(null);
+            return null;
+        }
+
+        const completedMilestones = focusedGoal.milestones.filter(m => m.isCompleted).length;
+        const totalMilestones = focusedGoal.milestones.length;
+        const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
+
+        return (
+            <div className="min-h-screen bg-slate-950 p-6 md:p-12 relative overflow-x-hidden">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none fixed"></div>
+                
+                {rewardMessage && (
+                    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
+                        <div className={`px-8 py-5 rounded-xl text-xl font-bold shadow-2xl border ${rewardMessage.includes('JACKPOT') ? 'bg-yellow-500 text-black border-yellow-300' : 'bg-indigo-600 text-white border-indigo-400'}`}>
+                            {rewardMessage}
+                        </div>
+                    </div>
+                )}
+
+                <div className="max-w-6xl mx-auto relative z-10">
+                    {/* Header with Exit Focus Button */}
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={() => setFocusedGoalId(null)}
+                                className="p-3 text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors border border-slate-800"
+                                title="Exit focus mode"
+                            >
+                                <Minimize2 size={24} />
+                            </button>
+                            <div>
+                                <h1 className="text-3xl font-bold text-white">Focus Mode</h1>
+                                <p className="text-slate-400 text-base">Working on one goal at a time</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-slate-800 px-4 py-2 rounded-full text-base font-mono text-indigo-400 border border-slate-700">
+                                Diff: {focusedGoal.difficultyRating}/10
+                            </div>
+                            {focusedGoal.estimatedTimeframe && (
+                                <div className="bg-emerald-900/20 px-4 py-2 rounded-full text-base font-mono text-emerald-400 border border-emerald-500/30 flex items-center gap-2">
+                                    <CalendarClock size={16} />
+                                    {focusedGoal.estimatedTimeframe}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Focused Goal Card */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 shadow-2xl">
+                        <div className="mb-8">
+                            <div className="flex items-center gap-4 mb-4">
+                                <h2 className="text-5xl font-bold text-white leading-tight">{focusedGoal.title}</h2>
+                                {focusedGoal.status === 'completed' && (
+                                    <span className="flex items-center gap-2 text-sm bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20">
+                                        <CheckCircle size={16} /> COMPLETED
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-slate-300 text-xl leading-relaxed whitespace-pre-wrap">{focusedGoal.description}</p>
+                        </div>
+
+                        {/* Progress Bar */}
+                        {totalMilestones > 0 && (
+                            <div className="mb-8">
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="text-lg font-medium text-slate-400">Progress</span>
+                                    <span className="text-lg font-bold text-indigo-400">{completedMilestones}/{totalMilestones} Milestones ({progress}%)</span>
+                                </div>
+                                <div className="w-full h-4 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className={`h-full transition-all duration-500 ${focusedGoal.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'}`} style={{ width: `${progress}%` }}></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* AI Assessment */}
+                        {focusedGoal.aiAssessment && (
+                            <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl p-6 mb-8">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Brain size={18} className="text-indigo-400" />
+                                    <h5 className="text-sm font-bold text-indigo-300 uppercase tracking-wider">Neural Analysis Log</h5>
+                                </div>
+                                <p className="text-base text-slate-400 mb-4 italic leading-relaxed">"{focusedGoal.aiAssessment.reasoning}"</p>
+                                <div className="flex items-center gap-4 text-sm mb-4 flex-wrap">
+                                    <span className="bg-slate-800 px-3 py-1.5 rounded text-slate-300">
+                                        Est. Difficulty: {focusedGoal.aiAssessment.estimatedRating}/10
+                                    </span>
+                                    {focusedGoal.aiAssessment.estimatedTimeframe && (
+                                        <span className="bg-emerald-900/20 px-3 py-1.5 rounded text-emerald-400 border border-emerald-500/30 flex items-center gap-2">
+                                            <CalendarClock size={14} />
+                                            Est. Time: {focusedGoal.aiAssessment.estimatedTimeframe}
+                                        </span>
+                                    )}
+                                    <span className="text-indigo-400/80">
+                                        Suggestion: {focusedGoal.aiAssessment.suggestion}
+                                    </span>
+                                </div>
+                                {focusedGoal.aiAssessment.timeframeReasoning && (
+                                    <p className="text-sm text-slate-500 mb-4 italic leading-relaxed">⏱️ {focusedGoal.aiAssessment.timeframeReasoning}</p>
+                                )}
+                                {focusedGoal.aiAssessment.alternativeActions && focusedGoal.aiAssessment.alternativeActions.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-indigo-500/20">
+                                        <span className="text-xs text-indigo-400 font-bold uppercase tracking-wider block mb-2">Suggested Starting Points:</span>
+                                        <ul className="list-disc list-inside text-base text-slate-400 space-y-1.5">
+                                            {focusedGoal.aiAssessment.alternativeActions.map((action, i) => (
+                                                <li key={i}>{action}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Milestones */}
+                        <div className="space-y-5">
+                            <h3 className="text-2xl font-bold text-white mb-6">Milestones</h3>
+                            {focusedGoal.milestones.length === 0 ? (
+                                <p className="text-slate-500 italic text-lg">No milestones defined yet. Break this goal down.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {focusedGoal.milestones.map(milestone => (
+                                        <MilestoneItem 
+                                            key={milestone.id} 
+                                            milestone={milestone} 
+                                            onUpdate={loadGoals}
+                                            onReward={handleReward}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                            
+                            <MilestoneInput 
+                                goalId={focusedGoal.id} 
+                                goalTitle={focusedGoal.title}
+                                goalDescription={focusedGoal.description}
+                                onMilestoneCreated={loadGoals} 
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -711,9 +861,18 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <button onClick={() => toggleGoal(goal.id)} className="p-1 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                                                    {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-                                                </button>
+                                                <div className="flex flex-col gap-2">
+                                                    <button 
+                                                        onClick={() => setFocusedGoalId(goal.id)} 
+                                                        className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30"
+                                                        title="Focus on this goal"
+                                                    >
+                                                        <Maximize2 size={18} />
+                                                    </button>
+                                                    <button onClick={() => toggleGoal(goal.id)} className="p-1 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
+                                                        {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 
