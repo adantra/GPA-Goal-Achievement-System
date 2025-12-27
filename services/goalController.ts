@@ -44,7 +44,10 @@ export const createGoal = async (data: Omit<Goal, 'id' | 'status' | 'milestones'
         estimatedTimeframe: data.estimatedTimeframe,
         status: 'active',
         milestones: [],
-        aiAssessment: data.aiAssessment
+        aiAssessment: data.aiAssessment,
+        tags: data.tags || [],
+        createdAt: new Date().toISOString(),
+        lastWorkedOn: new Date().toISOString()
     };
 
     const goals = readGoals();
@@ -55,9 +58,9 @@ export const createGoal = async (data: Omit<Goal, 'id' | 'status' | 'milestones'
 };
 
 /**
- * Updates an existing goal's title, description, AI assessment, or estimated timeframe.
+ * Updates an existing goal's title, description, AI assessment, estimated timeframe, or tags.
  */
-export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'aiAssessment' | 'estimatedTimeframe'>>): Promise<Goal> => {
+export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'aiAssessment' | 'estimatedTimeframe' | 'tags' | 'lastWorkedOn'>>): Promise<Goal> => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 400));
 

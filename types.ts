@@ -62,6 +62,20 @@ export interface Goal {
   status: 'active' | 'completed' | 'archived';
   milestones: Milestone[];
   aiAssessment?: AIAssessment;
+  tags?: string[]; // Tags like "career", "health", "learning"
+  createdAt?: string; // ISO Date String
+  lastWorkedOn?: string; // ISO Date String - tracks engagement
+}
+
+export interface WeeklyReview {
+  id: string;
+  weekStartDate: string; // ISO Date String (Monday)
+  weekEndDate: string; // ISO Date String (Sunday)
+  wentWell: string;
+  blockers: string;
+  priorities: string[];
+  aiInsights?: string;
+  completedAt: string; // ISO Date String
 }
 
 export interface SpaceTimePhase {

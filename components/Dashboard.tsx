@@ -6,13 +6,15 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2, Brain, ZoomIn, ZoomOut, RotateCcw, Plus } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2, Brain, ZoomIn, ZoomOut, RotateCcw, Plus, Tag, Filter, Calendar } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
 import ScheduleGenerator from './ScheduleGenerator';
 import GoalAuditModal from './GoalAuditModal';
 import UserProfileModal from './UserProfileModal';
+import WeeklyReviewModal from './WeeklyReviewModal';
+import TagsManager from './TagsManager';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Props {
@@ -27,8 +29,12 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [showSchedule, setShowSchedule] = useState(false);
     const [showAudit, setShowAudit] = useState(false);
     const [showProfile, setShowProfile] = useState(false);
+    const [showWeeklyReview, setShowWeeklyReview] = useState(false);
     const [focusedGoalId, setFocusedGoalId] = useState<string | null>(null);
     const [rewardMessage, setRewardMessage] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [editTags, setEditTags] = useState<string[]>([]);
     const currentUser = getCurrentUser();
 
     // File Import Ref
@@ -190,6 +196,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditAISuggestion(goal.aiAssessment?.suggestion || '');
         setEditAlternativeActions(goal.aiAssessment?.alternativeActions || []);
         setEditTimeframe(goal.estimatedTimeframe || '');
+        setEditTags(goal.tags || []);
         // Automatically sync assistant context if it's already open
         if (showAssistant) {
             setAssistantContext({ title: goal.title, description: goal.description, mode: 'edition' });
@@ -204,6 +211,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         setEditAISuggestion('');
         setEditAlternativeActions([]);
         setEditTimeframe('');
+        setEditTags([]);
         setIsPolishing(false);
         setAssistantContext(prev => ({ ...prev, mode: 'idle' }));
     };
@@ -342,7 +350,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 title: editTitle, 
                 description: editDescription,
                 aiAssessment: updatedAIAssessment,
-                estimatedTimeframe: editTimeframe || undefined
+                estimatedTimeframe: editTimeframe || undefined,
+                tags: editTags,
+                lastWorkedOn: new Date().toISOString()
             });
             await loadGoals();
             cancelEditing();
@@ -521,6 +531,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                     />
                                     <p className="text-sm text-slate-500 mt-1 italic">How long do you think this goal will take?</p>
                                 </div>
+
+                                {/* Tags Manager */}
+                                <TagsManager tags={editTags} onChange={setEditTags} />
 
                                 {/* AI Assessment Editing in Focus Mode */}
                                 {focusedGoal.aiAssessment && (
@@ -740,6 +753,10 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                 <GoalAuditModal goals={goals} onClose={() => setShowAudit(false)} />
             )}
 
+            {showWeeklyReview && (
+                <WeeklyReviewModal goals={goals} onClose={() => setShowWeeklyReview(false)} />
+            )}
+
             {showProfile && (
                 <UserProfileModal 
                     isOpen={showProfile} 
@@ -822,6 +839,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                              <div className="space-y-2">
                                  <button onClick={() => setShowAudit(true)} className="w-full py-3 bg-indigo-900/20 hover:bg-indigo-900/40 border border-indigo-500/20 text-indigo-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
                                      <PieChart size={16} /> Neuro-Balance Audit
+                                 </button>
+                                 <button onClick={() => setShowWeeklyReview(true)} className="w-full py-3 bg-emerald-900/20 hover:bg-emerald-900/40 border border-emerald-500/20 text-emerald-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
+                                     <Calendar size={16} /> Weekly Review
                                  </button>
                                  <button onClick={() => setShowSpaceTime(true)} className="w-full py-3 bg-purple-900/20 hover:bg-purple-900/40 border border-purple-500/20 text-purple-300 rounded-lg transition flex items-center justify-center gap-2 text-sm font-medium">
                                      <Activity size={16} /> Space-Time Bridge
@@ -910,19 +930,104 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                          </div>
                     </div>
                     
+                    {/* Search and Filter */}
+                    <div className="mb-6 space-y-3">
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Search goals and milestones..."
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                        />
+                        
+                        {/* All Tags Display + Filter */}
+                        {(() => {
+                            const allTags = Array.from(new Set(goals.flatMap(g => g.tags || [])));
+                            return allTags.length > 0 && (
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <span className="text-xs text-slate-500 font-bold uppercase flex items-center gap-1">
+                                        <Filter size={12} />
+                                        Filter:
+                                    </span>
+                                    {allTags.map(tag => {
+                                        const isSelected = selectedTags.includes(tag);
+                                        const TAG_COLORS = [
+                                            'bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30',
+                                            'bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30',
+                                            'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30',
+                                            'bg-pink-500/20 text-pink-300 border-pink-500/30 hover:bg-pink-500/30',
+                                            'bg-yellow-500/20 text-yellow-300 border-yellow-500/30 hover:bg-yellow-500/30',
+                                        ];
+                                        const hash = String(tag).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                                        const colorClass = TAG_COLORS[hash % TAG_COLORS.length];
+                                        
+                                        return (
+                                            <button
+                                                key={tag}
+                                                onClick={() => {
+                                                    if (isSelected) {
+                                                        setSelectedTags(selectedTags.filter(t => t !== tag));
+                                                    } else {
+                                                        setSelectedTags([...selectedTags, tag]);
+                                                    }
+                                                }}
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer transition-all ${colorClass} ${isSelected ? 'ring-2 ring-white/50' : ''}`}
+                                            >
+                                                <Tag size={10} />
+                                                #{tag}
+                                            </button>
+                                        );
+                                    })}
+                                    {selectedTags.length > 0 && (
+                                        <button
+                                            onClick={() => setSelectedTags([])}
+                                            className="text-xs text-slate-500 hover:text-slate-300 underline"
+                                        >
+                                            Clear filters
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                    </div>
+                    
                     {loading ? (
                         <div className="text-slate-500 animate-pulse flex items-center gap-2"><Loader2 className="animate-spin" /> Loading neural pathways...</div>
                     ) : goals.length === 0 ? (
                         <div className="text-slate-500 italic p-8 border border-dashed border-slate-800 rounded-2xl text-center">
                             No active protocols found. Define a new goal in the left panel to begin.
                         </div>
-                    ) : (
+                    ) : (() => {
+                        // Filter goals by search query and selected tags
+                        const filteredGoals = goals.filter(goal => {
+                            // Search filter
+                            const matchesSearch = !searchQuery || 
+                                goal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                goal.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                goal.milestones.some(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()));
+                            
+                            // Tag filter
+                            const matchesTags = selectedTags.length === 0 ||
+                                selectedTags.every(selectedTag => goal.tags?.includes(selectedTag));
+                            
+                            return matchesSearch && matchesTags;
+                        });
+
+                        if (filteredGoals.length === 0) {
+                            return (
+                                <div className="text-slate-500 italic p-8 border border-dashed border-slate-800 rounded-2xl text-center">
+                                    No goals match your filters. Try adjusting your search or filters.
+                                </div>
+                            );
+                        }
+
+                        return (
                         <div className={`grid gap-6 items-start transition-all duration-300 ease-in-out ${
                             isGridView 
                             ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
                             : 'grid-cols-1 2xl:grid-cols-2'
                         }`}>
-                            {goals.map(goal => {
+                            {filteredGoals.map(goal => {
                                 const isCollapsed = collapsedGoals.has(goal.id);
                                 const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
                                 const totalMilestones = goal.milestones.length;
@@ -1254,7 +1359,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                 );
                             })}
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
             </div>
         </div>
