@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Milestone, ActionType, Action, RewardType, CommentType } from '../types';
 import { updateMilestone, deleteMilestone, completeMilestone, addComment, deleteComment } from '../services/milestoneController';
 import { Trophy, Check, Edit2, Trash2, X, Plus, Save, ArrowRightCircle, ShieldAlert, Calendar, AlertTriangle, MessageSquare, Send, Lightbulb, CloudRain, Flame, FileText } from 'lucide-react';
+import { formatDeadline, formatRelativeDate } from '../utils/dateFormatting';
 
 interface Props {
     milestone: Milestone;
@@ -141,25 +142,8 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
         }
     };
 
-    // Date Logic
-    const getDeadlineStatus = () => {
-        if (!milestone.deadline || milestone.isCompleted) return null;
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const due = new Date(milestone.deadline);
-        due.setHours(0, 0, 0, 0);
-        
-        const diffTime = due.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays < 0) return { text: `Overdue by ${Math.abs(diffDays)}d`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30' };
-        if (diffDays === 0) return { text: 'Due Today', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/30' };
-        if (diffDays <= 2) return { text: `${diffDays} days left`, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30' };
-        return { text: new Date(milestone.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), color: 'text-slate-400', bg: 'bg-slate-700/30 border-slate-700' };
-    };
-
-    const deadlineStatus = getDeadlineStatus();
+    // Date Logic - Using new date formatting utility
+    const deadlineStatus = formatDeadline(milestone.deadline, milestone.isCompleted);
 
     // Safe access for comments (handles migration from old data)
     const comments = milestone.comments || [];
@@ -276,11 +260,19 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
                             {milestone.title}
                         </h4>
                         
-                        {/* Deadline Badge - Converted text-[10px] to text-[0.7rem] relative units */}
+                        {/* Deadline Badge with Visual Calendar Icon */}
                         {!milestone.isCompleted && deadlineStatus && (
-                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[0.7rem] font-bold uppercase tracking-wide ${deadlineStatus.color} ${deadlineStatus.bg}`}>
-                                {deadlineStatus.text.includes('Overdue') ? <AlertTriangle size={10} /> : <Calendar size={10} />}
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[0.7rem] font-bold uppercase tracking-wide ${deadlineStatus.color} ${deadlineStatus.bg}`}>
+                                <span className="text-sm">{deadlineStatus.icon}</span>
                                 {deadlineStatus.text}
+                            </div>
+                        )}
+                        
+                        {/* Completed Badge */}
+                        {milestone.isCompleted && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[0.7rem] font-bold uppercase tracking-wide text-emerald-400 bg-emerald-500/10 border-emerald-500/30">
+                                <span className="text-sm">✓</span>
+                                Completed
                             </div>
                         )}
 
@@ -365,7 +357,9 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
                                             {/* Converted text-[10px] to text-[0.7rem] */}
                                             <div className="text-[0.7rem] text-slate-500 mt-1 flex justify-between items-center">
                                                 <span className="uppercase font-bold opacity-60 mr-2">{comment.type || 'log'}</span>
-                                                <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                                                <span title={new Date(comment.createdAt).toLocaleString()}>
+                                                    {formatRelativeDate(comment.createdAt)}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>

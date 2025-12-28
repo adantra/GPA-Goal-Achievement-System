@@ -6,7 +6,7 @@ import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
 import MilestoneInput from './MilestoneInput';
 import MilestoneItem from './MilestoneItem';
-import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2, Brain, ZoomIn, ZoomOut, RotateCcw, Plus, Tag, Filter, Calendar } from 'lucide-react';
+import { Trophy, Activity, BrainCircuit, LogOut, User as UserIcon, DownloadCloud, CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, UploadCloud, Loader2, Sparkles, Flame, Bot, CalendarClock, Info, PieChart, LayoutGrid, List, Maximize2, Minimize2, Brain, ZoomIn, ZoomOut, RotateCcw, Plus, Tag, Filter, Calendar, Keyboard, Target } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
@@ -16,6 +16,17 @@ import UserProfileModal from './UserProfileModal';
 import WeeklyReviewModal from './WeeklyReviewModal';
 import TagsManager from './TagsManager';
 import { GoogleGenAI, Type } from "@google/genai";
+import { formatRelativeDate, formatDateWithIcon, getAgingColor, isDateStale } from '../utils/dateFormatting';
+
+// Helper component for keyboard shortcut display
+const ShortcutRow: React.FC<{ shortcut: string; description: string }> = ({ shortcut, description }) => (
+    <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition">
+        <span className="text-slate-300 text-sm">{description}</span>
+        <kbd className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-md text-white font-mono text-sm font-bold shadow-sm">
+            {shortcut}
+        </kbd>
+    </div>
+);
 
 interface Props {
     onLogout: () => void;
@@ -40,6 +51,11 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     // File Import Ref
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isImporting, setIsImporting] = useState(false);
+    
+    // Refs for keyboard shortcuts
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const createGoalRef = useRef<HTMLDivElement>(null);
+    const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
     // Editing State
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -86,6 +102,126 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         // Default browser font-size is 16px (100%).
         document.documentElement.style.fontSize = `${zoomLevel}%`;
     }, [zoomLevel]);
+    
+    // Keyboard Shortcuts Handler
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if user is typing in an input, textarea, or contenteditable
+            const target = e.target as HTMLElement;
+            const isTyping = target.tagName === 'INPUT' || 
+                           target.tagName === 'TEXTAREA' || 
+                           target.isContentEditable;
+            
+            // Handle Escape key (always works, even in inputs)
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                // Close any open modals
+                if (showSpaceTime) setShowSpaceTime(false);
+                else if (showAmygdala) setShowAmygdala(false);
+                else if (showSchedule) setShowSchedule(false);
+                else if (showAudit) setShowAudit(false);
+                else if (showProfile) setShowProfile(false);
+                else if (showWeeklyReview) setShowWeeklyReview(false);
+                else if (showAssistant) setShowAssistant(false);
+                else if (showKeyboardHelp) setShowKeyboardHelp(false);
+                else if (focusedGoalId) setFocusedGoalId(null);
+                else if (editingGoalId) cancelEditing();
+                return;
+            }
+            
+            // Handle '?' or 'h' to show help (works in inputs too)
+            if ((e.key === '?' || (e.key === 'h' && !isTyping)) && !showKeyboardHelp) {
+                e.preventDefault();
+                setShowKeyboardHelp(true);
+                return;
+            }
+            
+            // Don't trigger other shortcuts if user is typing
+            if (isTyping) return;
+            
+            // Prevent default for shortcut keys
+            const shortcutKeys = ['c', 'f', 'n', '/', 'e'];
+            if (shortcutKeys.includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+            
+            switch (e.key.toLowerCase()) {
+                case 'c':
+                    // Create new goal - scroll to create form and focus first input
+                    createGoalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Give scroll time to complete, then focus
+                    setTimeout(() => {
+                        const firstInput = createGoalRef.current?.querySelector('input');
+                        firstInput?.focus();
+                    }, 300);
+                    break;
+                    
+                case 'f':
+                    // Cycle through active goals in focus mode
+                    const activeGoals = goals.filter(g => g.status === 'active');
+                    if (activeGoals.length === 0) break;
+                    
+                    if (!focusedGoalId) {
+                        // No goal focused - focus first one (or last if Shift is held)
+                        setFocusedGoalId(e.shiftKey ? activeGoals[activeGoals.length - 1].id : activeGoals[0].id);
+                    } else {
+                        // Find current focused goal index
+                        const currentIndex = activeGoals.findIndex(g => g.id === focusedGoalId);
+                        if (currentIndex === -1) {
+                            // Current focused goal not in active list - focus first
+                            setFocusedGoalId(activeGoals[0].id);
+                        } else if (e.shiftKey) {
+                            // Shift+F: Cycle backwards
+                            if (currentIndex === 0) {
+                                // At first goal - unfocus
+                                setFocusedGoalId(null);
+                            } else {
+                                // Focus previous goal
+                                setFocusedGoalId(activeGoals[currentIndex - 1].id);
+                            }
+                        } else {
+                            // F: Cycle forwards
+                            if (currentIndex === activeGoals.length - 1) {
+                                // At last goal - unfocus
+                                setFocusedGoalId(null);
+                            } else {
+                                // Focus next goal
+                                setFocusedGoalId(activeGoals[currentIndex + 1].id);
+                            }
+                        }
+                    }
+                    break;
+                    
+                case 'n':
+                    // Open Neural Assistant
+                    if (!showAssistant) {
+                        setShowAssistant(true);
+                        setAssistantContext({ title: '', description: '', mode: 'idle' });
+                    } else {
+                        setShowAssistant(false);
+                    }
+                    break;
+                    
+                case '/':
+                    // Focus search bar
+                    searchInputRef.current?.focus();
+                    break;
+                    
+                case 'e':
+                    // Edit focused goal, or first active goal if none focused
+                    const goalToEdit = focusedGoalId 
+                        ? goals.find(g => g.id === focusedGoalId)
+                        : goals.find(g => g.status === 'active');
+                    if (goalToEdit && !editingGoalId) {
+                        startEditing(goalToEdit);
+                    }
+                    break;
+            }
+        };
+        
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [goals, focusedGoalId, editingGoalId, showSpaceTime, showAmygdala, showSchedule, showAudit, showProfile, showWeeklyReview, showAssistant, showKeyboardHelp]);
 
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 10, 150));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 10, 80));
@@ -782,6 +918,99 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
             {showAmygdala && (
                 <ForeshadowingFailureModal mode="view" onUnlock={() => setShowAmygdala(false)} />
             )}
+            
+            {/* Keyboard Shortcuts Help Modal */}
+            {showKeyboardHelp && (
+                <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-indigo-900/20 to-purple-900/20">
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <Keyboard size={28} className="text-indigo-400" />
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-white">Keyboard Shortcuts</h2>
+                                        <p className="text-slate-400 text-sm mt-1">Navigate faster with hotkeys</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setShowKeyboardHelp(false)}
+                                    className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-500 hover:text-white"
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Shortcuts List */}
+                        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                            {/* Navigation Shortcuts */}
+                            <div>
+                                <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <Target size={14} />
+                                    Navigation
+                                </h3>
+                                <div className="space-y-2">
+                                    <ShortcutRow shortcut="/" description="Focus search bar" />
+                                    <ShortcutRow shortcut="C" description="Create new goal (scroll to form)" />
+                                    <ShortcutRow shortcut="F" description="Cycle forward through active goals" />
+                                    <ShortcutRow shortcut="Shift + F" description="Cycle backward through active goals" />
+                                    <ShortcutRow shortcut="E" description="Edit focused goal (or first active goal)" />
+                                </div>
+                            </div>
+
+                            {/* Tools & Modals */}
+                            <div>
+                                <h3 className="text-sm font-bold text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <Brain size={14} />
+                                    Tools & Modals
+                                </h3>
+                                <div className="space-y-2">
+                                    <ShortcutRow shortcut="N" description="Open/Close Neural Assistant" />
+                                    <ShortcutRow shortcut="Esc" description="Close any open modal or focused goal" />
+                                    <ShortcutRow shortcut="? or H" description="Show this keyboard shortcuts help" />
+                                </div>
+                            </div>
+
+                            {/* Tips */}
+                            <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-lg p-4">
+                                <h3 className="text-sm font-bold text-indigo-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <Sparkles size={14} />
+                                    Pro Tips
+                                </h3>
+                                <ul className="text-sm text-slate-400 space-y-1.5">
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-indigo-400 mt-0.5">•</span>
+                                        <span>Keyboard shortcuts don't work while typing in input fields</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-indigo-400 mt-0.5">•</span>
+                                        <span>Press <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs font-mono">F</kbd> repeatedly to cycle through all your active goals</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-indigo-400 mt-0.5">•</span>
+                                        <span>Press <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs font-mono">Esc</kbd> multiple times to close nested modals</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-indigo-400 mt-0.5">•</span>
+                                        <span>Use <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs font-mono">/</kbd> to quickly search without reaching for your mouse</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t border-slate-800 bg-slate-900 flex justify-end">
+                            <button
+                                onClick={() => setShowKeyboardHelp(false)}
+                                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors font-medium"
+                            >
+                                Got it!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="max-w-[1800px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10 transition-all duration-500">
                 
@@ -855,7 +1084,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                              </div>
                         </div>
 
-                        <CreateGoalForm onGoalCreated={loadGoals} onOpenAssistant={(t, d) => openAssistant(t, d, 'creation')} />
+                        <div ref={createGoalRef}>
+                            <CreateGoalForm onGoalCreated={loadGoals} onOpenAssistant={(t, d) => openAssistant(t, d, 'creation')} />
+                        </div>
                     </div>
                 </div>
 
@@ -892,6 +1123,18 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                      <RotateCcw size={12} />
                                  </button>
                              </div>
+
+                             <div className="w-px h-6 bg-slate-800 mx-1 hidden sm:block"></div>
+                             
+                             {/* Keyboard Shortcuts Help */}
+                             <button
+                                 onClick={() => setShowKeyboardHelp(true)}
+                                 className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white transition"
+                                 title="Keyboard Shortcuts (Press ? or H)"
+                             >
+                                 <Keyboard size={14} />
+                                 <span className="hidden sm:inline">Shortcuts</span>
+                             </button>
 
                              <div className="w-px h-6 bg-slate-800 mx-1 hidden sm:block"></div>
 
@@ -933,10 +1176,11 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                     {/* Search and Filter */}
                     <div className="mb-6 space-y-3">
                         <input
+                            ref={searchInputRef}
                             type="text"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Search goals and milestones..."
+                            placeholder="Search goals and milestones... (Press '/' to focus)"
                             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                         />
                         
@@ -1139,8 +1383,9 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                             <div className="flex items-center gap-2 mb-3">
                                                                 <Brain size={14} className="text-indigo-400" />
                                                                 <h5 className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Neural Analysis Log</h5>
-                                                                <span className="text-[10px] text-slate-600 ml-auto">
-                                                                    {new Date(goal.aiAssessment.timestamp).toLocaleDateString()}
+                                                                <span className={`text-[10px] ml-auto flex items-center gap-1 ${getAgingColor(goal.aiAssessment.timestamp)}`}>
+                                                                    {formatDateWithIcon(goal.aiAssessment.timestamp).icon}
+                                                                    {formatRelativeDate(goal.aiAssessment.timestamp)}
                                                                 </span>
                                                             </div>
                                                             <div className="space-y-3">
@@ -1246,6 +1491,19 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                         </button>
                                                     </div>
                                                     <p className={`text-slate-400 text-sm mt-1 whitespace-pre-wrap ${isCollapsed ? 'line-clamp-2' : ''}`}>{goal.description}</p>
+                                                    
+                                                    {/* Last Worked On Indicator */}
+                                                    {goal.lastWorkedOn && (
+                                                        <div className={`flex items-center gap-1.5 mt-2 text-xs ${getAgingColor(goal.lastWorkedOn)} ${isDateStale(goal.lastWorkedOn) ? 'font-semibold' : ''}`}>
+                                                            {formatDateWithIcon(goal.lastWorkedOn).icon}
+                                                            <span>Last worked on {formatRelativeDate(goal.lastWorkedOn)}</span>
+                                                            {isDateStale(goal.lastWorkedOn) && (
+                                                                <span className="ml-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/30 rounded text-orange-400 animate-pulse">
+                                                                    Stale
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -1293,13 +1551,14 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                                 {/* Saved AI Assessment Display */}
                                                 {goal.aiAssessment && (
                                                     <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-xl p-4 mb-4">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <Brain size={14} className="text-indigo-400" />
-                                                            <h5 className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Neural Analysis Log</h5>
-                                                            <span className="text-[10px] text-slate-600 ml-auto">
-                                                                {new Date(goal.aiAssessment.timestamp).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <Brain size={14} className="text-indigo-400" />
+                                                                <h5 className="text-xs font-bold text-indigo-300 uppercase tracking-wider">Neural Analysis Log</h5>
+                                                                <span className={`text-[10px] ml-auto flex items-center gap-1 ${getAgingColor(goal.aiAssessment.timestamp)}`}>
+                                                                    {formatDateWithIcon(goal.aiAssessment.timestamp).icon}
+                                                                    {formatRelativeDate(goal.aiAssessment.timestamp)}
+                                                                </span>
+                                                            </div>
                                                         <p className="text-sm text-slate-400 mb-2 italic">"{goal.aiAssessment.reasoning}"</p>
                                                         <div className="flex items-center gap-3 text-xs mb-3 flex-wrap">
                                                             <span className="bg-slate-800 px-2 py-0.5 rounded text-slate-300">
@@ -1362,6 +1621,20 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                         );
                     })()}
                 </div>
+            </div>
+            
+            {/* Floating Keyboard Hint */}
+            <div className="fixed bottom-6 right-6 z-30">
+                <button
+                    onClick={() => setShowKeyboardHelp(true)}
+                    className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-sm hover:bg-slate-800 border border-slate-700 hover:border-indigo-500/50 px-4 py-2.5 rounded-xl shadow-lg transition-all hover:scale-105 group"
+                    title="View Keyboard Shortcuts"
+                >
+                    <Keyboard size={16} className="text-slate-400 group-hover:text-indigo-400 transition" />
+                    <span className="text-xs font-medium text-slate-400 group-hover:text-white transition">
+                        Press <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-xs font-mono ml-1">?</kbd> for shortcuts
+                    </span>
+                </button>
             </div>
         </div>
     );
