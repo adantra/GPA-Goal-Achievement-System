@@ -42,6 +42,39 @@ export interface AIAssessment {
   timestamp: string;
 }
 
+// ── Implementation Intentions (If-Then Plans) ────────────────
+// Research: Peter Gollwitzer — nearly doubles goal follow-through rates
+export interface ImplementationIntention {
+  id: string;
+  trigger: string;    // "When I sit at my desk after lunch"
+  action: string;     // "I will practice piano for 20 min"
+  fallback: string;   // "If too tired, just 5 min of scales"
+}
+
+// ── WOOP Framework (Mental Contrasting) ──────────────────────
+// Research: Gabriele Oettingen — one of the most validated goal-achievement frameworks
+export interface WOOPData {
+  wish: string;       // What do you most wish for?
+  outcome: string;    // What would the best outcome look/feel like?
+  obstacle: string;   // What inner obstacle stands in the way?
+  plan: string;       // If [obstacle], then I will [action]
+  completedAt?: string; // When the WOOP was last done
+}
+
+// ── Obstacle Pre-Mortem ──────────────────────────────────────
+// Research: Gary Klein — prospective hindsight increases failure identification by 30%
+export interface PreMortemItem {
+  id: string;
+  failure: string;           // "What went wrong" scenario
+  preventiveAction: string;  // How to prevent it
+  isHappening?: boolean;     // Flag during reviews: "Is this starting to happen?"
+}
+
+export interface PreMortemData {
+  items: PreMortemItem[];
+  completedAt?: string;
+}
+
 export interface Milestone {
   id: string;
   goalId: string;
@@ -51,6 +84,7 @@ export interface Milestone {
   deadline?: string; // ISO Date String YYYY-MM-DD
   actions: Action[];
   comments: Comment[];
+  intentions?: ImplementationIntention[]; // If-Then plans for this milestone
 }
 
 export interface Goal {
@@ -65,6 +99,10 @@ export interface Goal {
   tags?: string[]; // Tags like "career", "health", "learning"
   createdAt?: string; // ISO Date String
   lastWorkedOn?: string; // ISO Date String - tracks engagement
+  // ── Neuroscience Protocol Data ──
+  woop?: WOOPData;           // Mental Contrasting (WOOP Framework)
+  preMortem?: PreMortemData; // Obstacle Pre-Mortem
+  identityStatement?: string; // "The person I'm becoming: ___"
 }
 
 export interface WeeklyReview {

@@ -83,7 +83,7 @@ export const createParkedGoal = async (title: string, description?: string): Pro
 /**
  * Updates an existing goal's title, description, AI assessment, estimated timeframe, tags, status, or lastWorkedOn.
  */
-export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'aiAssessment' | 'estimatedTimeframe' | 'tags' | 'lastWorkedOn' | 'status'>>): Promise<Goal> => {
+export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'aiAssessment' | 'estimatedTimeframe' | 'tags' | 'lastWorkedOn' | 'status' | 'woop' | 'preMortem' | 'identityStatement'>>): Promise<Goal> => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 400));
 

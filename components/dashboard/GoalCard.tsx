@@ -3,9 +3,10 @@ import { Goal } from '../../types';
 import MilestoneInput from '../MilestoneInput';
 import MilestoneItem from '../MilestoneItem';
 import TagsManager from '../TagsManager';
-import { CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, Loader2, Sparkles, Bot, CalendarClock, Brain, Maximize2, Plus, Tag, Archive } from 'lucide-react';
+import { CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, Loader2, Sparkles, Bot, CalendarClock, Brain, Maximize2, Plus, Tag, Archive, Star, Skull, UserCircle } from 'lucide-react';
 import { formatRelativeDate, formatDateWithIcon, getAgingColor, isDateStale } from '../../utils/dateFormatting';
 import { getTagColor } from '../../utils/tagColors';
+import IdentityStatement from '../neuro/IdentityStatement';
 
 interface GoalEditor {
     editingGoalId: string | null;
@@ -44,6 +45,8 @@ interface Props {
     onReward: (message: string) => void;
     onTagClick: (tag: string) => void;
     loadGoals: () => Promise<void>;
+    onOpenWOOP?: (goal: Goal) => void;
+    onOpenPreMortem?: (goal: Goal) => void;
 }
 
 const GoalCard: React.FC<Props> = ({
@@ -56,6 +59,8 @@ const GoalCard: React.FC<Props> = ({
     onReward,
     onTagClick,
     loadGoals,
+    onOpenWOOP,
+    onOpenPreMortem,
 }) => {
     const [isHovered, setIsHovered] = useState(false);
     const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
@@ -173,6 +178,14 @@ const GoalCard: React.FC<Props> = ({
                             )}
                         </div>
                     )}
+
+                    {/* Neuroscience Protocols Section */}
+                    <NeuroscienceProtocols
+                        goal={goal}
+                        onOpenWOOP={onOpenWOOP}
+                        onOpenPreMortem={onOpenPreMortem}
+                        loadGoals={loadGoals}
+                    />
 
                     {/* Milestones */}
                     {goal.milestones.length === 0 ? (
@@ -464,5 +477,122 @@ const EditMode: React.FC<{
         </div>
     </div>
 );
+
+// ---- Neuroscience Protocols Section ----
+
+const NeuroscienceProtocols: React.FC<{
+    goal: Goal;
+    onOpenWOOP?: (goal: Goal) => void;
+    onOpenPreMortem?: (goal: Goal) => void;
+    loadGoals: () => Promise<void>;
+}> = ({ goal, onOpenWOOP, onOpenPreMortem, loadGoals }) => {
+    const hasWOOP = !!goal.woop?.completedAt;
+    const hasPreMortem = (goal.preMortem?.items?.length || 0) > 0;
+    const hasIdentity = !!goal.identityStatement;
+    const hasAnyProtocol = hasWOOP || hasPreMortem || hasIdentity;
+    const flaggedCount = goal.preMortem?.items?.filter(i => i.isHappening)?.length || 0;
+
+    return (
+        <div className="space-y-3">
+            {/* Identity Statement — always show if set */}
+            <IdentityStatement goal={goal} onSaved={loadGoals} compact />
+
+            {/* Protocol buttons / badges */}
+            <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider">Protocols:</span>
+
+                {/* WOOP Button */}
+                <button
+                    onClick={() => onOpenWOOP?.(goal)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                        hasWOOP
+                            ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20'
+                            : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:text-yellow-400 hover:border-yellow-500/30'
+                    }`}
+                    title="Mental Contrasting (WOOP Framework)"
+                >
+                    <Star size={12} />
+                    WOOP
+                    {hasWOOP && <span className="text-[9px] text-yellow-500/60">✓</span>}
+                </button>
+
+                {/* Pre-Mortem Button */}
+                <button
+                    onClick={() => onOpenPreMortem?.(goal)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                        hasPreMortem
+                            ? flaggedCount > 0
+                                ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
+                                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                            : 'bg-slate-800/50 border-slate-700/50 text-slate-500 hover:text-red-400 hover:border-red-500/30'
+                    }`}
+                    title="Obstacle Pre-Mortem"
+                >
+                    <Skull size={12} />
+                    Pre-Mortem
+                    {hasPreMortem && (
+                        <span className="text-[9px]">
+                            {flaggedCount > 0 ? `⚠️ ${flaggedCount}` : `✓ ${goal.preMortem!.items.length}`}
+                        </span>
+                    )}
+                </button>
+
+                {/* Identity Statement Button (if not yet set) */}
+                {!hasIdentity && (
+                    <IdentityStatement goal={goal} onSaved={loadGoals} />
+                )}
+            </div>
+
+            {/* WOOP Summary (if completed) */}
+            {hasWOOP && goal.woop && (
+                <div className="bg-yellow-900/5 border border-yellow-500/10 rounded-lg p-3 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-wider">WOOP Summary</span>
+                        <button
+                            onClick={() => onOpenWOOP?.(goal)}
+                            className="text-[10px] text-slate-600 hover:text-yellow-400 transition"
+                        >
+                            Edit
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span className="text-yellow-500/60 text-[10px] uppercase font-bold">Wish</span>
+                            <p className="text-slate-400 line-clamp-2">{goal.woop.wish}</p>
+                        </div>
+                        <div>
+                            <span className="text-emerald-500/60 text-[10px] uppercase font-bold">Outcome</span>
+                            <p className="text-slate-400 line-clamp-2">{goal.woop.outcome}</p>
+                        </div>
+                        <div>
+                            <span className="text-red-500/60 text-[10px] uppercase font-bold">Obstacle</span>
+                            <p className="text-slate-400 line-clamp-2">{goal.woop.obstacle}</p>
+                        </div>
+                        <div>
+                            <span className="text-indigo-500/60 text-[10px] uppercase font-bold">Plan</span>
+                            <p className="text-slate-400 line-clamp-2">{goal.woop.plan}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Pre-Mortem Flagged Items Warning */}
+            {flaggedCount > 0 && (
+                <div className="bg-red-900/10 border border-red-500/20 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-xs text-red-400 font-bold">
+                        <Skull size={14} />
+                        <span>{flaggedCount} predicted failure{flaggedCount !== 1 ? 's' : ''} flagged as happening!</span>
+                        <button
+                            onClick={() => onOpenPreMortem?.(goal)}
+                            className="ml-auto text-[10px] bg-red-500/20 border border-red-500/30 px-2 py-0.5 rounded hover:bg-red-500/30 transition"
+                        >
+                            Review
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default GoalCard;

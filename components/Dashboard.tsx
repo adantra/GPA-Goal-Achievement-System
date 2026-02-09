@@ -25,6 +25,8 @@ import { LoadingSkeletons } from './dashboard/GoalCardSkeleton';
 import GoalStatsSummary from './dashboard/GoalStatsSummary';
 import CompletionCelebration from './dashboard/CompletionCelebration';
 import GoalParkingLot from './dashboard/GoalParkingLot';
+import WOOPModal from './neuro/WOOPModal';
+import PreMortemModal from './neuro/PreMortemModal';
 
 // Custom hooks
 import { useZoom } from '../hooks/useZoom';
@@ -63,6 +65,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [showProfile, setShowProfile] = useState(false);
     const [showWeeklyReview, setShowWeeklyReview] = useState(false);
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+    const [woopGoal, setWoopGoal] = useState<Goal | null>(null);
+    const [preMortemGoal, setPreMortemGoal] = useState<Goal | null>(null);
 
     // ── Focus ─────────────────────────────────────────────────
     const [focusedGoalId, setFocusedGoalId] = useState<string | null>(null);
@@ -279,6 +283,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
             {showAmygdala && <ForeshadowingFailureModal mode="view" onUnlock={() => setShowAmygdala(false)} />}
             {showKeyboardHelp && <KeyboardShortcutsModal onClose={() => setShowKeyboardHelp(false)} />}
             {celebratingGoal && <CompletionCelebration goal={celebratingGoal} onClose={() => setCelebratingGoal(null)} />}
+            {woopGoal && <WOOPModal goal={woopGoal} onClose={() => setWoopGoal(null)} onSaved={loadGoals} />}
+            {preMortemGoal && <PreMortemModal goal={preMortemGoal} onClose={() => setPreMortemGoal(null)} onSaved={loadGoals} />}
 
             {/* Grid Layout */}
             <div className="max-w-[1800px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10 transition-all duration-500">
@@ -377,6 +383,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                     onReward={handleReward}
                                     onTagClick={goalFilters.handleToggleTag}
                                     loadGoals={loadGoals}
+                                    onOpenWOOP={setWoopGoal}
+                                    onOpenPreMortem={setPreMortemGoal}
                                 />
                             ))}
                         </div>

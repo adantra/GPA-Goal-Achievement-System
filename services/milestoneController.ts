@@ -1,4 +1,4 @@
-import { Milestone, RewardType, Action, Comment, CommentType } from '../types';
+import { Milestone, RewardType, Action, Comment, CommentType, ImplementationIntention } from '../types';
 import { addMilestoneToGoal, updateMilestoneInGoal, getGoals, removeMilestoneFromGoal } from './goalController';
 import { getCurrentUser } from './auth';
 
@@ -43,7 +43,7 @@ export const createMilestone = async (goalId: string, title: string, deadline: s
 /**
  * Updates an existing milestone.
  */
-export const updateMilestone = async (id: string, updates: Partial<Pick<Milestone, 'title' | 'actions' | 'deadline'>>): Promise<Milestone> => {
+export const updateMilestone = async (id: string, updates: Partial<Pick<Milestone, 'title' | 'actions' | 'deadline' | 'intentions'>>): Promise<Milestone> => {
     await new Promise(resolve => setTimeout(resolve, 400));
 
     const milestones = await getAllMilestones();

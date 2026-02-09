@@ -7,6 +7,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added — Phase 2.2: Neuroscience Protocols
+- **Implementation Intentions (If-Then Plans)** — Per-milestone structured plans with Trigger ("When..."), Action ("I will..."), and Fallback ("If too hard...") fields; based on Peter Gollwitzer's research that nearly doubles goal follow-through; inline display on milestone cards + editable in edit mode
+- **Mental Contrasting (WOOP Framework)** — Guided 4-step modal workflow per goal: Wish → Outcome → Obstacle → Plan; based on Gabriele Oettingen's research; saved as part of goal data; compact summary visible on goal cards; clickable step navigation with completion tracking
+- **Obstacle Pre-Mortem** — Modal to imagine failure 3 months out and flip each scenario into a preventive action; based on Gary Klein's research (30% better failure identification); flag items as "happening" during reviews with visual warnings on goal cards
+- **Identity-Based Goal Framing** — Per-goal identity statement ("The person I'm becoming: ___"); based on James Clear's Atomic Habits research; inline compact display on cards, editable with framing tips
+- **New type definitions** — `ImplementationIntention`, `WOOPData`, `PreMortemItem`, `PreMortemData` interfaces; `intentions` field on Milestone; `woop`, `preMortem`, `identityStatement` fields on Goal
+- **New components** — `ImplementationIntentions.tsx`, `WOOPModal.tsx`, `PreMortemModal.tsx`, `IdentityStatement.tsx` in `components/neuro/`
+
+### Changed — Phase 2.2
+- `GoalCard` — now displays neuroscience protocol buttons (WOOP, Pre-Mortem, Identity), WOOP summaries, and pre-mortem flagged warnings
+- `MilestoneItem` — now displays and edits Implementation Intentions (If-Then Plans)
+- `goalController.ts` — `updateGoal` now supports `woop`, `preMortem`, `identityStatement`
+- `milestoneController.ts` — `updateMilestone` now supports `intentions`
+
 ### Added — Phase 2.1: Enhanced Search & Organization
 - **Advanced search filters** — filter by status (active/completed/archived), difficulty range (dual slider), timeframe (has/doesn't have), and creation date range; all filters are combinable
 - **Smart sort options** — sort goals by: Recently Worked On, Difficulty, Progress %, Creation Date, Alphabetical, Timeframe; each with ascending/descending toggle

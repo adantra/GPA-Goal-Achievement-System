@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Milestone, ActionType, Action, RewardType, CommentType } from '../types';
+import { Milestone, ActionType, Action, RewardType, CommentType, ImplementationIntention } from '../types';
 import { updateMilestone, deleteMilestone, completeMilestone, addComment, deleteComment } from '../services/milestoneController';
 import { Trophy, Check, Edit2, Trash2, X, Plus, Save, ArrowRightCircle, ShieldAlert, Calendar, AlertTriangle, MessageSquare, Send, Lightbulb, CloudRain, Flame, FileText } from 'lucide-react';
 import { formatDeadline, formatRelativeDate } from '../utils/dateFormatting';
+import ImplementationIntentions from './neuro/ImplementationIntentions';
 
 interface Props {
     milestone: Milestone;
@@ -24,6 +25,7 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
     const [editTitle, setEditTitle] = useState(milestone.title);
     const [editDeadline, setEditDeadline] = useState(milestone.deadline || '');
     const [editActions, setEditActions] = useState<Action[]>(milestone.actions);
+    const [editIntentions, setEditIntentions] = useState<ImplementationIntention[]>(milestone.intentions || []);
     
     // Inputs for adding new actions during edit
     const [newGoAction, setNewGoAction] = useState('');
@@ -66,7 +68,8 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
             await updateMilestone(milestone.id, {
                 title: editTitle,
                 deadline: editDeadline,
-                actions: editActions
+                actions: editActions,
+                intentions: editIntentions,
             });
             setIsEditing(false);
             onUpdate();
@@ -224,6 +227,12 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
                     </div>
                 </div>
 
+                {/* Implementation Intentions (If-Then Plans) */}
+                <ImplementationIntentions
+                    intentions={editIntentions}
+                    onChange={setEditIntentions}
+                />
+
                 <div className="flex justify-end gap-2 pt-2 border-t border-slate-700">
                      <button 
                         onClick={() => handleDelete()}
@@ -315,6 +324,13 @@ const MilestoneItem: React.FC<Props> = ({ milestone, onUpdate, onReward }) => {
                             </ul>
                         </div>
                     </div>
+
+                    {/* Implementation Intentions (read-only display) */}
+                    <ImplementationIntentions
+                        intentions={milestone.intentions || []}
+                        onChange={() => {}}
+                        readOnly
+                    />
                 </div>
 
                 <div className="mt-2 sm:mt-0 flex-shrink-0 self-start sm:self-center">
