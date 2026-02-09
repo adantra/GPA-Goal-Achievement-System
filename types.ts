@@ -59,7 +59,7 @@ export interface Goal {
   description: string;
   difficultyRating: number;
   estimatedTimeframe?: string; // User-defined or AI-suggested timeframe
-  status: 'active' | 'completed' | 'archived';
+  status: 'active' | 'completed' | 'archived' | 'parked';
   milestones: Milestone[];
   aiAssessment?: AIAssessment;
   tags?: string[]; // Tags like "career", "health", "learning"

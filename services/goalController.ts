@@ -58,9 +58,32 @@ export const createGoal = async (data: Omit<Goal, 'id' | 'status' | 'milestones'
 };
 
 /**
- * Updates an existing goal's title, description, AI assessment, estimated timeframe, or tags.
+ * Creates a parked goal (Someday/Maybe) with relaxed validation — no difficulty rating or milestones required.
  */
-export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'aiAssessment' | 'estimatedTimeframe' | 'tags' | 'lastWorkedOn'>>): Promise<Goal> => {
+export const createParkedGoal = async (title: string, description?: string): Promise<Goal> => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    const newGoal: Goal = {
+        id: crypto.randomUUID(),
+        title,
+        description: description || '',
+        difficultyRating: 6, // Default; will be set properly when activated
+        status: 'parked',
+        milestones: [],
+        createdAt: new Date().toISOString(),
+    };
+
+    const goals = readGoals();
+    goals.push(newGoal);
+    saveGoals(goals);
+
+    return newGoal;
+};
+
+/**
+ * Updates an existing goal's title, description, AI assessment, estimated timeframe, tags, status, or lastWorkedOn.
+ */
+export const updateGoal = async (id: string, updates: Partial<Pick<Goal, 'title' | 'description' | 'aiAssessment' | 'estimatedTimeframe' | 'tags' | 'lastWorkedOn' | 'status'>>): Promise<Goal> => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 400));
 

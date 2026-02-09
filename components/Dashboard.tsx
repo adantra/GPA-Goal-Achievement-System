@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Goal } from '../types';
 import { getGoals } from '../services/goalController';
 import { getCurrentUser, logout } from '../services/auth';
@@ -22,11 +22,15 @@ import FocusMode from './dashboard/FocusMode';
 import KeyboardShortcutsModal from './dashboard/KeyboardShortcutsModal';
 import EmptyState from './dashboard/EmptyState';
 import { LoadingSkeletons } from './dashboard/GoalCardSkeleton';
+import GoalStatsSummary from './dashboard/GoalStatsSummary';
+import CompletionCelebration from './dashboard/CompletionCelebration';
+import GoalParkingLot from './dashboard/GoalParkingLot';
 
 // Custom hooks
 import { useZoom } from '../hooks/useZoom';
 import { useGoalEditor } from '../hooks/useGoalEditor';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useGoalFilters } from '../hooks/useGoalFilters';
 
 interface Props {
     onLogout: () => void;
@@ -60,15 +64,14 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const [showWeeklyReview, setShowWeeklyReview] = useState(false);
     const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
-    // ── Focus & Search ─────────────────────────────────────────
+    // ── Focus ─────────────────────────────────────────────────
     const [focusedGoalId, setFocusedGoalId] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     // ── View State ─────────────────────────────────────────────
     const [isGridView, setIsGridView] = useState(false);
     const [collapsedGoals, setCollapsedGoals] = useState<Set<string>>(new Set());
     const [rewardMessage, setRewardMessage] = useState<string | null>(null);
+    const [celebratingGoal, setCelebratingGoal] = useState<Goal | null>(null);
 
     // ── Assistant State ────────────────────────────────────────
     const [showAssistant, setShowAssistant] = useState(false);
@@ -88,6 +91,8 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
     // ── Custom Hooks ───────────────────────────────────────────
     const { zoomLevel, handleZoomIn, handleZoomOut, handleZoomReset } = useZoom();
+
+    const goalFilters = useGoalFilters(goals);
 
     const editor = useGoalEditor({
         loadGoals,
@@ -125,25 +130,22 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
         createGoalRef,
     });
 
-    // ── Derived Data ───────────────────────────────────────────
-    const allTags = useMemo(
-        () => Array.from(new Set(goals.flatMap(g => g.tags || []))),
-        [goals]
-    );
-
-    const filteredGoals = useMemo(() => {
-        return goals.filter(goal => {
-            const matchesSearch = !searchQuery || 
-                goal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                goal.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                goal.milestones.some(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()));
-            
-            const matchesTags = selectedTags.length === 0 ||
-                selectedTags.every(selectedTag => goal.tags?.includes(selectedTag));
-            
-            return matchesSearch && matchesTags;
+    // ── Watch for goal completions ─────────────────────────────
+    useEffect(() => {
+        // Check if any goal was just marked complete
+        const justCompletedGoal = goals.find(g => {
+            if (g.status !== 'completed') return false;
+            // Only trigger celebration if this is a "recent" completion (within last 10 seconds)
+            // This prevents celebration on initial load
+            const now = Date.now();
+            const lastWorked = g.lastWorkedOn ? new Date(g.lastWorkedOn).getTime() : 0;
+            return now - lastWorked < 10000; // 10 seconds
         });
-    }, [goals, searchQuery, selectedTags]);
+
+        if (justCompletedGoal && !celebratingGoal) {
+            setCelebratingGoal(justCompletedGoal);
+        }
+    }, [goals, celebratingGoal]);
 
     // ── Handlers ───────────────────────────────────────────────
     const handleReward = (message: string) => {
@@ -215,11 +217,6 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
     const collapseAll = () => setCollapsedGoals(new Set(goals.map(g => g.id)));
     const expandAll = () => setCollapsedGoals(new Set());
 
-    const handleToggleTag = (tag: string) => {
-        setSelectedTags(prev =>
-            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-        );
-    };
 
     // ── Full-screen modes ──────────────────────────────────────
     if (showSpaceTime) {
@@ -281,6 +278,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
             {showAmygdala && <ForeshadowingFailureModal mode="view" onUnlock={() => setShowAmygdala(false)} />}
             {showKeyboardHelp && <KeyboardShortcutsModal onClose={() => setShowKeyboardHelp(false)} />}
+            {celebratingGoal && <CompletionCelebration goal={celebratingGoal} onClose={() => setCelebratingGoal(null)} />}
 
             {/* Grid Layout */}
             <div className="max-w-[1800px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10 transition-all duration-500">
@@ -314,13 +312,16 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
 
                 {/* ── Main Content ── */}
                 <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+                    {/* Goal Statistics Summary */}
+                    {!loading && goals.length > 0 && <GoalStatsSummary goals={goals} />}
+                    
                     <GoalToolbar
-                        goalCount={goals.length}
+                        goalCount={goals.filter(g => g.status !== 'parked').length}
                         zoomLevel={zoomLevel}
                         isGridView={isGridView}
-                        searchQuery={searchQuery}
-                        selectedTags={selectedTags}
-                        allTags={allTags}
+                        searchQuery={goalFilters.searchQuery}
+                        selectedTags={goalFilters.selectedTags}
+                        allTags={goalFilters.allTags}
                         searchInputRef={searchInputRef}
                         onZoomIn={handleZoomIn}
                         onZoomOut={handleZoomOut}
@@ -329,24 +330,42 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                         onExpandAll={expandAll}
                         onCollapseAll={collapseAll}
                         onToggleGridView={toggleGridView}
-                        onSearchChange={setSearchQuery}
-                        onToggleTag={handleToggleTag}
-                        onClearTags={() => setSelectedTags([])}
+                        onSearchChange={goalFilters.setSearchQuery}
+                        onToggleTag={goalFilters.handleToggleTag}
+                        onClearTags={goalFilters.clearTags}
+                        // Sort
+                        sortKey={goalFilters.sortKey}
+                        sortDir={goalFilters.sortDir}
+                        onSortKeyChange={goalFilters.setSortKey}
+                        onSortDirChange={goalFilters.setSortDir}
+                        // Advanced filters
+                        advancedFilters={goalFilters.advancedFilters}
+                        onAdvancedFiltersChange={goalFilters.setAdvancedFilters}
+                        showAdvancedFilters={goalFilters.showAdvancedFilters}
+                        onToggleAdvancedFilters={() => goalFilters.setShowAdvancedFilters(!goalFilters.showAdvancedFilters)}
+                        activeFilterCount={goalFilters.activeFilterCount}
+                        // Presets
+                        allPresets={goalFilters.allPresets}
+                        activePresetId={goalFilters.activePresetId}
+                        onApplyPreset={goalFilters.applyPreset}
+                        onSavePreset={goalFilters.saveCurrentAsPreset}
+                        onDeletePreset={goalFilters.deletePreset}
+                        onClearAllFilters={goalFilters.clearAllFilters}
                     />
                     
                     {loading ? (
                         <LoadingSkeletons count={3} isGridView={isGridView} />
-                    ) : goals.length === 0 ? (
+                    ) : goals.filter(g => g.status !== 'parked').length === 0 ? (
                         <EmptyState type="no-goals" />
-                    ) : filteredGoals.length === 0 ? (
-                        <EmptyState type="no-matches" onClearFilters={() => { setSearchQuery(''); setSelectedTags([]); }} />
+                    ) : goalFilters.filteredGoals.length === 0 ? (
+                        <EmptyState type="no-matches" onClearFilters={goalFilters.clearAllFilters} />
                     ) : (
                         <div className={`grid gap-6 items-start transition-all duration-300 ease-in-out ${
                             isGridView 
                             ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' 
                             : 'grid-cols-1 2xl:grid-cols-2'
                         }`}>
-                            {filteredGoals.map(goal => (
+                            {goalFilters.filteredGoals.map(goal => (
                                 <GoalCard
                                     key={goal.id}
                                     goal={goal}
@@ -356,11 +375,16 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                     onFocus={setFocusedGoalId}
                                     onOpenAssistant={openAssistant}
                                     onReward={handleReward}
-                                    onTagClick={handleToggleTag}
+                                    onTagClick={goalFilters.handleToggleTag}
                                     loadGoals={loadGoals}
                                 />
                             ))}
                         </div>
+                    )}
+
+                    {/* Goal Parking Lot */}
+                    {!loading && (
+                        <GoalParkingLot parkedGoals={goalFilters.parkedGoals} onReload={loadGoals} />
                     )}
                 </div>
             </div>

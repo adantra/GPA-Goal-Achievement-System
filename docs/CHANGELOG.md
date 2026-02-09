@@ -7,7 +7,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Added
+### Added — Phase 2.1: Enhanced Search & Organization
+- **Advanced search filters** — filter by status (active/completed/archived), difficulty range (dual slider), timeframe (has/doesn't have), and creation date range; all filters are combinable
+- **Smart sort options** — sort goals by: Recently Worked On, Difficulty, Progress %, Creation Date, Alphabetical, Timeframe; each with ascending/descending toggle
+- **Saved filter presets** — 3 built-in presets (Needs Attention, Quick Wins, Hard Mode); create/save/delete custom presets; persisted in localStorage
+- **Goal Parking Lot (Someday/Maybe)** — separate collapsible section for "parked" goals; quick-add with just a title (no difficulty/milestones required); one-click "Activate" promotion to active goals; timestamp shows when parked
+- **`parked` goal status** — new `status: 'parked'` added to the Goal type; relaxed validation for parked goals via `createParkedGoal` service function; parked goals excluded from main filtered list
+- **`useGoalFilters` hook** — centralized hook managing search, tags, advanced filters, sort, presets, and derived filtered/parked goal lists
+- **`AdvancedFilters.tsx`** — reusable components: `SortControl` dropdown, `AdvancedFilterPanel` with collapsible UI, `FilterPresetsBar` for preset selection/creation/deletion
+- **`GoalParkingLot.tsx`** — parking lot component with quick-add input, parked goal list, promote/delete actions, relative "parked X ago" timestamps
+
+### Changed
+- `GoalToolbar` now includes sort dropdown, filter presets bar, and advanced filter toggle alongside existing search/tags
+- `goalController.ts` — `updateGoal` now supports `status` updates; new `createParkedGoal` export
+- Dashboard goal count now excludes parked goals
+
+### Previously Added
+- **Goal statistics summary** — 4-card dashboard at the top showing: active goal count, completed goal count, weekly milestone completions, and current streak (consecutive days with activity)
+- **Completion celebration modal** — confetti animation, achievement badges (Legendary/Marathon Master/High Achiever/Goal Getter based on difficulty and milestones), shareable completion cards, motivational quote
+- **canvas-confetti** package for celebration animations
+
+### Previously Added (2026-02-08 continued)
 - **Tag pills on goal cards** — colored tag badges display below goal descriptions in view mode (max 3 visible, "+N more" for overflow); clicking a tag pill instantly filters goals by that tag
 - **Goal card hover effects** — subtle lift animation on hover with indigo border glow; quick-action buttons (edit, focus, collapse) appear on hover; "last worked on" date reveals on hover (always visible if stale)
 - **Empty state illustrations** — rich illustrated empty states with animated brain icon when no goals exist, plus 3-step onboarding tips; filtered empty state with "Clear all filters" action

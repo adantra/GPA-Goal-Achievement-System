@@ -1,6 +1,8 @@
 import React from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Keyboard, Maximize2, Minimize2, LayoutGrid, List, Filter, Tag } from 'lucide-react';
 import { getTagColor } from '../../utils/tagColors';
+import { SortControl, AdvancedFilterPanel, FilterPresetsBar } from './AdvancedFilters';
+import type { AdvancedFilters, GoalSortKey, GoalSortDir, FilterPreset } from '../../hooks/useGoalFilters';
 
 interface Props {
     goalCount: number;
@@ -20,6 +22,24 @@ interface Props {
     onSearchChange: (query: string) => void;
     onToggleTag: (tag: string) => void;
     onClearTags: () => void;
+    // Sort props
+    sortKey: GoalSortKey;
+    sortDir: GoalSortDir;
+    onSortKeyChange: (key: GoalSortKey) => void;
+    onSortDirChange: (dir: GoalSortDir) => void;
+    // Advanced filter props
+    advancedFilters: AdvancedFilters;
+    onAdvancedFiltersChange: (filters: AdvancedFilters) => void;
+    showAdvancedFilters: boolean;
+    onToggleAdvancedFilters: () => void;
+    activeFilterCount: number;
+    // Preset props
+    allPresets: FilterPreset[];
+    activePresetId: string | null;
+    onApplyPreset: (preset: FilterPreset) => void;
+    onSavePreset: (name: string, icon: string) => void;
+    onDeletePreset: (id: string) => void;
+    onClearAllFilters: () => void;
 }
 
 const GoalToolbar: React.FC<Props> = ({
@@ -40,6 +60,21 @@ const GoalToolbar: React.FC<Props> = ({
     onSearchChange,
     onToggleTag,
     onClearTags,
+    sortKey,
+    sortDir,
+    onSortKeyChange,
+    onSortDirChange,
+    advancedFilters,
+    onAdvancedFiltersChange,
+    showAdvancedFilters,
+    onToggleAdvancedFilters,
+    activeFilterCount,
+    allPresets,
+    activePresetId,
+    onApplyPreset,
+    onSavePreset,
+    onDeletePreset,
+    onClearAllFilters,
 }) => {
     return (
         <>
@@ -50,6 +85,16 @@ const GoalToolbar: React.FC<Props> = ({
                 </div>
                  
                 <div className="flex items-center gap-2 flex-wrap">
+                    {/* Sort Control */}
+                    <SortControl
+                        sortKey={sortKey}
+                        sortDir={sortDir}
+                        onSortKeyChange={onSortKeyChange}
+                        onSortDirChange={onSortDirChange}
+                    />
+
+                    <div className="w-px h-6 bg-slate-800 mx-1 hidden sm:block"></div>
+
                     {/* Zoom Controls */}
                     <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 items-center">
                         <button onClick={onZoomOut} className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-md transition" title="Zoom Out">
@@ -105,22 +150,35 @@ const GoalToolbar: React.FC<Props> = ({
                 </div>
             </div>
             
+            {/* Filter Presets */}
+            <FilterPresetsBar
+                presets={allPresets}
+                activePresetId={activePresetId}
+                onApply={onApplyPreset}
+                onSave={onSavePreset}
+                onDelete={onDeletePreset}
+                onClearAll={onClearAllFilters}
+                activeFilterCount={activeFilterCount}
+            />
+
             {/* Search and Filter */}
-            <div className="mb-6 space-y-3">
-                <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => onSearchChange(e.target.value)}
-                    placeholder="Search goals and milestones... (Press '/' to focus)"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
+            <div className="mb-4 space-y-3">
+                <div className="flex gap-2">
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => onSearchChange(e.target.value)}
+                        placeholder="Search goals and milestones... (Press '/' to focus)"
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                    />
+                </div>
                 
                 {allTags.length > 0 && (
                     <div className="flex flex-wrap gap-2 items-center">
                         <span className="text-xs text-slate-500 font-bold uppercase flex items-center gap-1">
                             <Filter size={12} />
-                            Filter:
+                            Tags:
                         </span>
                         {allTags.map(tag => {
                             const isSelected = selectedTags.includes(tag);
@@ -139,12 +197,21 @@ const GoalToolbar: React.FC<Props> = ({
                         })}
                         {selectedTags.length > 0 && (
                             <button onClick={onClearTags} className="text-xs text-slate-500 hover:text-slate-300 underline">
-                                Clear filters
+                                Clear tags
                             </button>
                         )}
                     </div>
                 )}
             </div>
+
+            {/* Advanced Filters */}
+            <AdvancedFilterPanel
+                filters={advancedFilters}
+                onChange={onAdvancedFiltersChange}
+                isOpen={showAdvancedFilters}
+                onToggle={onToggleAdvancedFilters}
+                activeFilterCount={activeFilterCount}
+            />
         </>
     );
 };
