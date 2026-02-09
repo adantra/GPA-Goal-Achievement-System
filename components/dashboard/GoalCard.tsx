@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Goal } from '../../types';
 import MilestoneInput from '../MilestoneInput';
 import MilestoneItem from '../MilestoneItem';
 import TagsManager from '../TagsManager';
-import { CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, Loader2, Sparkles, Bot, CalendarClock, Brain, Maximize2, Plus } from 'lucide-react';
+import { CheckCircle, Edit2, Save, X, Trash2, ChevronDown, ChevronUp, Loader2, Sparkles, Bot, CalendarClock, Brain, Maximize2, Plus, Tag, Archive } from 'lucide-react';
 import { formatRelativeDate, formatDateWithIcon, getAgingColor, isDateStale } from '../../utils/dateFormatting';
+import { getTagColor } from '../../utils/tagColors';
 
 interface GoalEditor {
     editingGoalId: string | null;
@@ -41,6 +42,7 @@ interface Props {
     onFocus: (id: string) => void;
     onOpenAssistant: (title: string, description: string, mode: 'creation' | 'edition') => void;
     onReward: (message: string) => void;
+    onTagClick: (tag: string) => void;
     loadGoals: () => Promise<void>;
 }
 
@@ -52,20 +54,30 @@ const GoalCard: React.FC<Props> = ({
     onFocus,
     onOpenAssistant,
     onReward,
+    onTagClick,
     loadGoals,
 }) => {
+    const [isHovered, setIsHovered] = useState(false);
     const completedMilestones = goal.milestones.filter(m => m.isCompleted).length;
     const totalMilestones = goal.milestones.length;
     const progress = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0;
     const isEditing = editor.editingGoalId === goal.id;
 
     return (
-        <div className={`bg-slate-900 border ${goal.status === 'completed' ? 'border-emerald-500/50 shadow-emerald-900/20 shadow-lg' : 'border-slate-800'} rounded-2xl p-6 hover:border-indigo-900/50 transition-all ${isEditing ? '2xl:col-span-2 shadow-2xl shadow-black ring-1 ring-indigo-500/30 z-20 relative' : ''}`}>
+        <div
+            className={`bg-slate-900 border rounded-2xl p-6 transition-all duration-200 group/card
+                ${goal.status === 'completed' ? 'border-emerald-500/50 shadow-emerald-900/20 shadow-lg' : 'border-slate-800'}
+                ${isEditing ? '2xl:col-span-2 shadow-2xl shadow-black ring-1 ring-indigo-500/30 z-20 relative' : ''}
+                ${!isEditing ? 'hover:border-indigo-500/40 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-950/30' : ''}
+            `}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
             <div className="flex justify-between items-start mb-4">
                 {isEditing ? (
                     <EditMode goal={goal} editor={editor} onOpenAssistant={onOpenAssistant} />
                 ) : (
-                    <ViewModeHeader goal={goal} isCollapsed={isCollapsed} editor={editor} />
+                    <ViewModeHeader goal={goal} isCollapsed={isCollapsed} editor={editor} onTagClick={onTagClick} isHovered={isHovered} />
                 )}
 
                 <div className="flex flex-col items-end gap-3 ml-4">
@@ -80,16 +92,24 @@ const GoalCard: React.FC<Props> = ({
                             </div>
                         )}
                     </div>
-                    <div className="flex flex-col gap-2">
+                    {/* Quick actions — visible on hover */}
+                    <div className={`flex flex-col gap-1.5 transition-opacity duration-200 ${isHovered || isEditing ? 'opacity-100' : 'opacity-0'}`}>
+                        <button 
+                            onClick={() => editor.startEditing(goal)} 
+                            className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30"
+                            title="Edit goal"
+                        >
+                            <Edit2 size={15} />
+                        </button>
                         <button 
                             onClick={() => onFocus(goal.id)} 
                             className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors border border-transparent hover:border-indigo-500/30"
                             title="Focus on this goal"
                         >
-                            <Maximize2 size={18} />
+                            <Maximize2 size={15} />
                         </button>
-                        <button onClick={() => onToggleCollapse(goal.id)} className="p-1 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                            {isCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                        <button onClick={() => onToggleCollapse(goal.id)} className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors" title={isCollapsed ? 'Expand' : 'Collapse'}>
+                            {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
                         </button>
                     </div>
                 </div>
@@ -188,36 +208,68 @@ const ViewModeHeader: React.FC<{
     goal: Goal;
     isCollapsed: boolean;
     editor: GoalEditor;
-}> = ({ goal, isCollapsed, editor }) => (
-    <div className="flex-1 mr-4 group relative">
-        <div className="flex items-center gap-3">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                {goal.title}
-                {goal.status === 'completed' && (
-                    <span className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                        <CheckCircle size={12} /> COMPLETED
-                    </span>
-                )}
-            </h3>
-            <button onClick={() => editor.startEditing(goal)} className="text-slate-500 hover:text-indigo-400 transition-colors p-1.5 hover:bg-slate-800 rounded-lg" title="Edit Goal">
-                <Edit2 size={16} />
-            </button>
-        </div>
-        <p className={`text-slate-400 text-sm mt-1 whitespace-pre-wrap ${isCollapsed ? 'line-clamp-2' : ''}`}>{goal.description}</p>
-        
-        {goal.lastWorkedOn && (
-            <div className={`flex items-center gap-1.5 mt-2 text-xs ${getAgingColor(goal.lastWorkedOn)} ${isDateStale(goal.lastWorkedOn) ? 'font-semibold' : ''}`}>
-                {formatDateWithIcon(goal.lastWorkedOn).icon}
-                <span>Last worked on {formatRelativeDate(goal.lastWorkedOn)}</span>
-                {isDateStale(goal.lastWorkedOn) && (
-                    <span className="ml-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/30 rounded text-orange-400 animate-pulse">
-                        Stale
-                    </span>
-                )}
+    onTagClick: (tag: string) => void;
+    isHovered: boolean;
+}> = ({ goal, isCollapsed, editor, onTagClick, isHovered }) => {
+    const tags = goal.tags || [];
+    const visibleTags = tags.slice(0, 3);
+    const hiddenCount = tags.length - visibleTags.length;
+    const isStale = isDateStale(goal.lastWorkedOn);
+
+    return (
+        <div className="flex-1 mr-4 relative">
+            <div className="flex items-center gap-3">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    {goal.title}
+                    {goal.status === 'completed' && (
+                        <span className="flex items-center gap-1 text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                            <CheckCircle size={12} /> COMPLETED
+                        </span>
+                    )}
+                </h3>
             </div>
-        )}
-    </div>
-);
+            <p className={`text-slate-400 text-sm mt-1 whitespace-pre-wrap ${isCollapsed ? 'line-clamp-2' : ''}`}>{goal.description}</p>
+            
+            {/* Tag Pills */}
+            {tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {visibleTags.map(tag => (
+                        <button
+                            key={tag}
+                            onClick={() => onTagClick(tag)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border cursor-pointer transition-all ${getTagColor(tag)}`}
+                            title={`Filter by #${tag}`}
+                        >
+                            <Tag size={9} />
+                            #{tag}
+                        </button>
+                    ))}
+                    {hiddenCount > 0 && (
+                        <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-800/60 text-slate-400 border border-slate-700/50 cursor-default"
+                            title={tags.slice(3).map(t => `#${t}`).join(', ')}
+                        >
+                            +{hiddenCount} more
+                        </span>
+                    )}
+                </div>
+            )}
+
+            {/* Last worked on — always visible if stale, otherwise only on hover */}
+            {goal.lastWorkedOn && (
+                <div className={`flex items-center gap-1.5 mt-2 text-xs transition-opacity duration-200 ${getAgingColor(goal.lastWorkedOn)} ${isStale ? 'font-semibold opacity-100' : isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                    {formatDateWithIcon(goal.lastWorkedOn).icon}
+                    <span>Last worked on {formatRelativeDate(goal.lastWorkedOn)}</span>
+                    {isStale && (
+                        <span className="ml-1 px-1.5 py-0.5 bg-orange-500/10 border border-orange-500/30 rounded text-orange-400 animate-pulse">
+                            Stale
+                        </span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
 
 const EditMode: React.FC<{
     goal: Goal;

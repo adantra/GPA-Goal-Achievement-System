@@ -3,7 +3,8 @@ import { Goal } from '../../types';
 import MilestoneInput from '../MilestoneInput';
 import MilestoneItem from '../MilestoneItem';
 import TagsManager from '../TagsManager';
-import { CheckCircle, Edit2, Save, X, Trash2, Loader2, Sparkles, Bot, CalendarClock, Brain, Minimize2, Plus } from 'lucide-react';
+import { CheckCircle, Edit2, Save, X, Trash2, Loader2, Sparkles, Bot, CalendarClock, Brain, Minimize2, Plus, Tag } from 'lucide-react';
+import { getTagColor } from '../../utils/tagColors';
 
 interface GoalEditor {
     editingGoalId: string | null;
@@ -336,6 +337,21 @@ const FocusViewMode: React.FC<{
                 </button>
             </div>
             <p className="text-slate-300 text-xl leading-relaxed whitespace-pre-wrap">{goal.description}</p>
+            
+            {/* Tags */}
+            {goal.tags && goal.tags.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-4">
+                    {goal.tags.map(tag => (
+                        <span
+                            key={tag}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${getTagColor(tag)}`}
+                        >
+                            <Tag size={12} />
+                            #{tag}
+                        </span>
+                    ))}
+                </div>
+            )}
         </div>
 
         {/* Progress Bar */}

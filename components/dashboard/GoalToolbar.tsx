@@ -1,5 +1,6 @@
 import React from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Keyboard, Maximize2, Minimize2, LayoutGrid, List, Filter, Tag } from 'lucide-react';
+import { getTagColor } from '../../utils/tagColors';
 
 interface Props {
     goalCount: number;
@@ -40,14 +41,6 @@ const GoalToolbar: React.FC<Props> = ({
     onToggleTag,
     onClearTags,
 }) => {
-    const TAG_COLORS = [
-        'bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/30',
-        'bg-purple-500/20 text-purple-300 border-purple-500/30 hover:bg-purple-500/30',
-        'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30',
-        'bg-pink-500/20 text-pink-300 border-pink-500/30 hover:bg-pink-500/30',
-        'bg-yellow-500/20 text-yellow-300 border-yellow-500/30 hover:bg-yellow-500/30',
-    ];
-
     return (
         <>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
@@ -131,8 +124,7 @@ const GoalToolbar: React.FC<Props> = ({
                         </span>
                         {allTags.map(tag => {
                             const isSelected = selectedTags.includes(tag);
-                            const hash = String(tag).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                            const colorClass = TAG_COLORS[hash % TAG_COLORS.length];
+                            const colorClass = getTagColor(tag);
                             
                             return (
                                 <button

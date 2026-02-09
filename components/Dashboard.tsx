@@ -4,7 +4,7 @@ import { getGoals } from '../services/goalController';
 import { getCurrentUser, logout } from '../services/auth';
 import { exportUserData, importUserData } from '../services/dataManagement';
 import CreateGoalForm from './CreateGoalForm';
-import { Loader2, Keyboard } from 'lucide-react';
+import { Keyboard } from 'lucide-react';
 import SpaceTimePlayer from './SpaceTimePlayer';
 import ForeshadowingFailureModal from './ForeshadowingFailureModal';
 import NeuralAssistant from './NeuralAssistant';
@@ -20,6 +20,8 @@ import GoalToolbar from './dashboard/GoalToolbar';
 import GoalCard from './dashboard/GoalCard';
 import FocusMode from './dashboard/FocusMode';
 import KeyboardShortcutsModal from './dashboard/KeyboardShortcutsModal';
+import EmptyState from './dashboard/EmptyState';
+import { LoadingSkeletons } from './dashboard/GoalCardSkeleton';
 
 // Custom hooks
 import { useZoom } from '../hooks/useZoom';
@@ -333,15 +335,11 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                     />
                     
                     {loading ? (
-                        <div className="text-slate-500 animate-pulse flex items-center gap-2"><Loader2 className="animate-spin" /> Loading neural pathways...</div>
+                        <LoadingSkeletons count={3} isGridView={isGridView} />
                     ) : goals.length === 0 ? (
-                        <div className="text-slate-500 italic p-8 border border-dashed border-slate-800 rounded-2xl text-center">
-                            No active protocols found. Define a new goal in the left panel to begin.
-                        </div>
+                        <EmptyState type="no-goals" />
                     ) : filteredGoals.length === 0 ? (
-                        <div className="text-slate-500 italic p-8 border border-dashed border-slate-800 rounded-2xl text-center">
-                            No goals match your filters. Try adjusting your search or filters.
-                        </div>
+                        <EmptyState type="no-matches" onClearFilters={() => { setSearchQuery(''); setSelectedTags([]); }} />
                     ) : (
                         <div className={`grid gap-6 items-start transition-all duration-300 ease-in-out ${
                             isGridView 
@@ -358,6 +356,7 @@ const Dashboard: React.FC<Props> = ({ onLogout }) => {
                                     onFocus={setFocusedGoalId}
                                     onOpenAssistant={openAssistant}
                                     onReward={handleReward}
+                                    onTagClick={handleToggleTag}
                                     loadGoals={loadGoals}
                                 />
                             ))}
